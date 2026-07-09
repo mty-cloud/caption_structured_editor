@@ -1,0 +1,107 @@
+# 自动打包 Windows .exe 和 macOS .app
+# 推送 tag (v*) 时自动构建并上传到 Release
+
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    name: Build macOS .app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller build.spec
+
+      - name: Compress .app
+        run: |
+          cd dist
+          zip -r ../机标结构化修改器-Mac.zip 机标结构化修改器.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 机标结构化修改器-Mac
+          path: 机标结构化修改器-Mac.zip
+
+  build-windows:
+    name: Build Windows .exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller build.spec
+
+      - name: Compress .exe
+        run: |
+          cd dist
+          powershell Compress-Archive -Path 机标结构化修改器.exe -DestinationPath ../机标结构化修改器-Windows.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 机标结构化修改器-Windows
+          path: 机标结构化修改器-Windows.zip
+
+  create-release:
+    name: Create Release
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: List artifacts
+        run: ls -la artifacts/*/*
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: 机标结构化修改器 ${{ github.ref_name }}
+          body: |
+            下载对应平台的版本：
+
+            - **Windows**: `机标结构化修改器-Windows.zip` — 解压后双击 `.exe` 运行
+            - **macOS**: `机标结构化修改器-Mac.zip` — 解压后双击 `.app` 运行
+
+            > 无需安装 Python，下载即用。
+          files: |
+            artifacts/机标结构化修改器-Mac/机标结构化修改器-Mac.zip
+            artifacts/机标结构化修改器-Windows/机标结构化修改器-Windows.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
