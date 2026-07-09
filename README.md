@@ -88,6 +88,45 @@ caption_structured_editor_mvp/
 
 ---
 
+## 🔗 下一步：集成 Label Studio（方案规划）
+
+计划通过 **DOM 桥接**方式连接 Label Studio，架构与另一个项目 [label-studio-dom-executor](https://github.com/mty-cloud/label-studio-dom-executor) 类似。
+
+### 整体架构
+
+```
+桌面助手 (Python 本地服务器 127.0.0.1:17892)
+  ├── 从 LS 拉取机标文本 → MVP 自动解析编辑
+  └── MVP 推回修改结果 → 桥接填入 LS 并提交
+
+浏览器 Tab A: Label Studio 标注页
+  └── 桥接脚本（书签注入）提取/填入机标文本
+
+浏览器 Tab B: MVP 编辑器 (GitHub Pages)
+  └── 定时轮询待处理数据、编辑、推回
+```
+
+### 数据流
+
+1. **拉取** — LS 页面的桥接脚本提取当前任务的机标文本，发送到本地服务器
+2. **解析** — MVP 轮询到新数据，调用 `parseCaption()` 自动加载到编辑器
+3. **修改** — 用户在 MVP 中编辑镜头/说话单元（现有功能）
+4. **推回** — MVP 生成修改后文本，发送到服务器；桥接脚本轮询到指令，填入 LS 并提交
+
+### 待开发组件
+
+| 组件 | 说明 |
+|------|------|
+| `src/local_bridge_server.py` | 本地 HTTP 服务器，管理桥接命令和机标数据中转 |
+| `src/main.py` | 桌面应用入口（Tkinter 或轻量系统托盘） |
+| `bridge/ls_caption_bridge.js` | LS 页面的桥接脚本：提取机标文本、填入修改文本 |
+| `bridge/bookmarklet.txt` | 书签小书签（注入桥接脚本） |
+| `index.html` | **改造**：新增 LS 连接模式、轮询、推回功能 |
+
+> 📌 当前为规划阶段，尚未开始实现。
+
+---
+
 ## 🔧 开发者
 
 ### 远程仓库
