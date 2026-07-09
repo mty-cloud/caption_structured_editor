@@ -1,8 +1,0 @@
-# 机标结构化修改器 - 桌面版
-#
-# 零外部依赖！全部使用 Python 标准库（tkinter、re、json 等）。
-# Python >= 3.9 推荐。
-#
-# 打包成独立可执行文件（.exe / .app）可使用 PyInstaller：
-#   pip install pyinstaller
-#   pyinstaller build.spec

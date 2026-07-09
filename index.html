@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>机标结构化修改器 MVP</title>
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div>
+        <h1>机标结构化修改器 MVP</h1>
+        <p>把机标文本拆成「镜头 → 说话单元 → 字段」模块，修改后自动生成标准文本。</p>
+      </div>
+      <div class="header-actions">
+        <button id="btnLoadSample" class="btn ghost">载入示例</button>
+        <button id="btnReset" class="btn danger-ghost">清空</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="left-pane">
+        <div class="pane-header">
+          <h2 id="leftPaneTitle">原始机标 / 导出结果</h2>
+          <button id="btnPaste" class="btn small">粘贴</button>
+          <button id="btnParse" class="btn primary small">解析成模块</button>
+          <button id="btnExport" class="btn small">导出到左侧</button>
+          <button id="btnCopyOutput" class="btn primary small hidden">复制结果</button>
+        </div>
+        <textarea id="rawInput" class="raw-textarea" spellcheck="false" placeholder="在这里粘贴原始机标文本，例如：\n[镜头 1][0.00s-0.76s]\n{...}"></textarea>
+      </section>
+
+      <section class="right-pane">
+        <div class="pane-header">
+          <h2>结构化修改</h2>
+          <button id="btnAddShot" class="btn small">+ 新增镜头</button>
+          <button id="btnValidate" class="btn small">校验</button>
+        </div>
+        <div id="editor" class="editor-root">
+          <div class="empty-state">
+            <div class="empty-title">还没有解析内容</div>
+            <div class="empty-text">粘贴机标后点击「解析成模块」。</div>
+          </div>
+        </div>
+        <div id="validationBox" class="validation-box muted">暂无校验结果。</div>
+      </section>
+    </main>
+  </div>
+
+  <template id="contextMenuTemplate">
+    <div class="context-menu" role="menu">
+      <button data-context-action="duplicate">复制这个说话单元</button>
+      <button data-context-action="delete" class="danger-text">删除这个说话单元</button>
+    </div>
+  </template>
+
+  <script src="src/app.js"></script>
+</body>
+</html>
