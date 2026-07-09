@@ -203,6 +203,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
       </div>
       <div class="header-actions">
         <button id="btnFetchTask" class="btn ghost">📥 从LS拉取</button>
+        <button id="btnBridgeFetch" class="btn ghost">📥 从LS桥接</button>
         <button id="btnLoadSample" class="btn ghost">载入示例</button>
         <button id="btnReset" class="btn danger-ghost">清空</button>
       </div>
@@ -526,6 +527,44 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
 document.getElementById('btnDiscard').addEventListener('click', function() {
   if (!confirm('确认丢弃此任务？不会提交任何修改内容。')) return;
   submitAndNext(true);
+});
+
+// 桥接拉取
+document.getElementById('btnBridgeFetch').addEventListener('click', async function() {
+  if (state.shots.length && !confirm('当前修改未提交，确认加载新任务吗？')) return;
+  try {
+    var resp = await fetch('/api/check-bridge');
+    var data = await resp.json();
+    if (!data || !data.caption_v5_translate) {
+      alert('暂无桥接数据。\n请先在 LS 页面上点击「LS桥接」书签。');
+      return;
+    }
+    currentTaskId = data.task_id || 0;
+    document.getElementById('taskId').textContent = currentTaskId;
+    document.getElementById('memoText').textContent = data.memo || '-';
+    document.getElementById('taskBar').classList.remove('hidden');
+    document.getElementById('submitBar').classList.remove('hidden');
+    var videoLink = document.getElementById('videoLink');
+    if (data.video_url) {
+      videoLink.href = data.video_url;
+      videoLink.classList.remove('hidden');
+    } else { videoLink.classList.add('hidden'); }
+    setTaskStatus('桥接任务 #' + currentTaskId + ' 已加载', 'ok');
+    setSubmitStatus('请修改后提交，或点击丢弃', '');
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnDiscard').disabled = false;
+    var captionText = data.caption_v5_translate || '';
+    els.rawInput.value = captionText;
+    els.leftPaneTitle.textContent = '原始机标 / 导出结果';
+    document.getElementById('btnCopyOutput').classList.add('hidden');
+    state.shots = [];
+    selectedTarget = null;
+    var shots = parseCaption(captionText);
+    if (shots.length) { state.shots = shots; render(); }
+    else { render(); }
+  } catch (err) {
+    alert('桥接拉取失败: ' + err.message + '\n请确认服务器已启动（python3 server.py）');
+  }
 });
 
 // 页面加载后检测 LS 连通性
