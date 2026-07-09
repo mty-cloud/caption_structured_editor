@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyinstaller pillow
+          pip install pyinstaller
 
       - name: Build with PyInstaller
         run: |
@@ -53,7 +53,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyinstaller pillow
+          pip install pyinstaller
 
       - name: Build with PyInstaller
         run: |

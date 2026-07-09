@@ -27,13 +27,8 @@ spec_dir = Path.cwd()
 # 应用名称
 app_name = "机标结构化修改器"
 
-# 图标（如果存在则使用）
+# 图标（暂不使用，避免格式兼容问题）
 icon_path = None
-for ext in (".icns", ".ico", ".png"):
-    p = spec_dir / f"assets/app_icon{ext}"
-    if p.exists():
-        icon_path = str(p)
-        break
 
 # 数据文件：docs 目录
 datas = [
