@@ -21,13 +21,16 @@ system = platform.system()
 is_darwin = system == "Darwin"
 is_win = system == "Windows"
 
+# spec 文件所在目录（PyInstaller 用 exec() 执行 spec，__file__ 不可用）
+spec_dir = Path.cwd()
+
 # 应用名称
 app_name = "机标结构化修改器"
 
 # 图标（如果存在则使用）
 icon_path = None
 for ext in (".icns", ".ico", ".png"):
-    p = Path(__file__).parent / f"assets/app_icon{ext}"
+    p = spec_dir / f"assets/app_icon{ext}"
     if p.exists():
         icon_path = str(p)
         break
