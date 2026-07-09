@@ -69,16 +69,14 @@ cd caption_structured_editor
 
 ```
 caption_structured_editor/
-├── index.html              ← 主页面（双击打开）
+├── index.html              ← 主页面（双击打开，已内嵌全部 CSS+JS）
 ├── README.md               ← 使用说明
 ├── LICENSE                 ← MIT 许可证
 ├── .gitignore              ← Git 忽略配置
-├── docs/                   ← 文档目录
-│   ├── CLAUDE_CODE_TASK.md     ← 开发任务说明
-│   └── sample_input.txt        ← 示例输入文本
-└── src/                    ← 源码目录
-    ├── app.js                  ← 核心逻辑（解析、渲染、编辑、导出）
-    └── styles.css              ← 样式（卡片布局、交互样式）
+├── .github/workflows/      ← GitHub Actions 自动部署
+│   └── deploy-pages.yml
+└── docs/                   ← 文档目录
+    └── sample_input.txt        ← 示例输入文本
 ```
 
 ---
@@ -86,7 +84,7 @@ caption_structured_editor/
 ## 🛠 技术说明
 
 - 纯前端，**零依赖**，无需 Node.js / npm / Python 等运行环境
-- 原生 HTML + CSS + JavaScript，无任何框架
+- 单文件 HTML，已内嵌全部 CSS + JavaScript，一个文件搞定所有功能
 - 非严格 JSON 兼容解析（原始机标可能包含裸值如 `是`、`否`）
 - 当前为独立运行模式，未集成 Label Studio
 
