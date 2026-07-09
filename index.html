@@ -192,6 +192,13 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
 .submit-bar .submit-status.error { color: #dc2626; }
 .submit-bar .submit-status.loading { color: #d97706; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* ===== 设置面板 ===== */
+.settings-field { margin-bottom: 12px; }
+.settings-field label { display: block; font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 4px; }
+.settings-field input { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+.settings-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+.settings-field .readonly-field { background: #f3f4f6; color: #6b7280; cursor: not-allowed; }
+.settings-tip { font-size: 12px; color: #6b7280; margin: -4px 0 10px; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -203,7 +210,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
       </div>
       <div class="header-actions">
         <button id="btnFetchTask" class="btn ghost">📥 从LS拉取</button>
-        <button id="btnBridgeFetch" class="btn ghost">📥 从LS桥接</button>
+        <button id="btnSettings" class="btn ghost">⚙️</button>
         <button id="btnLoadSample" class="btn ghost">载入示例</button>
         <button id="btnReset" class="btn danger-ghost">清空</button>
       </div>
@@ -245,6 +252,29 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
         </div>
       </section>
     </main>
+  </div>
+  <!-- 设置面板 -->
+  <div id="settingsOverlay" class="modal-overlay hidden">
+    <div class="modal-box" style="min-width:380px;">
+      <div class="modal-title">⚙️ LS 连接设置</div>
+      <p class="modal-desc">配置 Label Studio 服务器信息，设置自动保存到本地。</p>
+      <div class="settings-field">
+        <label>LS 服务器地址</label>
+        <input id="settingLSBase" type="text" placeholder="http://115.191.32.74:30014" />
+      </div>
+      <div class="settings-field">
+        <label>项目 ID</label>
+        <input id="settingProjectId" type="number" placeholder="4296" />
+      </div>
+      <div class="settings-field">
+        <label>API Token（固定预设）</label>
+        <input class="readonly-field" type="text" value="f1189e9eafd25393abaf1eac483290f3b62fb204" readonly />
+      </div>
+      <div class="modal-actions">
+        <button id="btnSaveSettings" class="btn modal-btn" style="text-align:center;background:#2563eb;color:#fff;">保存设置</button>
+        <button id="btnCloseSettings" class="btn ghost modal-btn-cancel" style="text-align:center;">取消</button>
+      </div>
+    </div>
   </div>
   <template id="contextMenuTemplate">
     <div class="context-menu" role="menu">
@@ -314,18 +344,27 @@ document.addEventListener('keydown',function(e){if(e.key!=='Delete'&&e.key!=='Ba
 function showContextMenu(x,y,sid,uid){closeContextMenu(); var tpl=document.getElementById('contextMenuTemplate'); var menu=tpl.content.firstElementChild.cloneNode(true); menu.style.left=x+'px'; menu.style.top=y+'px'; menu.dataset.shotId=sid; menu.dataset.uttId=uid; menu.addEventListener('click',function(e){var act=e.target.dataset.contextAction; if(!act) return; handleAction(act==='duplicate'?'duplicate-utt':'delete-utt',sid,uid); closeContextMenu();}); document.body.appendChild(menu);}
 function closeContextMenu(){document.querySelectorAll('.context-menu').forEach(function(m){m.remove();});}
 // ==================== LS API 连接功能 ====================
-const LS_BASE = 'http://115.191.32.74:30014';
 const LS_TOKEN = 'f1189e9eafd25393abaf1eac483290f3b62fb204';
 var currentTaskId = null;
 
+function getLSBase() { return localStorage.getItem('ls_base') || 'http://115.191.32.74:30014'; }
+function getProjectId() { return Number(localStorage.getItem('ls_project_id')) || 4296; }
+function saveSettings() {
+  var base = document.getElementById('settingLSBase').value.trim() || 'http://115.191.32.74:30014';
+  var pid = Number(document.getElementById('settingProjectId').value) || 4296;
+  localStorage.setItem('ls_base', base);
+  localStorage.setItem('ls_project_id', String(pid));
+}
+
 async function lsFetch(path, opts) {
+  var base = getLSBase();
   if (!opts) opts = {};
   opts.headers = opts.headers || {};
   opts.headers['Authorization'] = 'Token ' + LS_TOKEN;
   if (!(opts.body instanceof FormData)) {
     opts.headers['Content-Type'] = 'application/json';
   }
-  var resp = await fetch(LS_BASE + path, opts);
+  var resp = await fetch(base + path, opts);
   if (!resp.ok) {
     var errText = '';
     try { errText = await resp.text(); } catch(e) {}
@@ -349,7 +388,7 @@ function setSubmitStatus(msg, type) {
 
 async function checkLSConnection() {
   try {
-    var data = await lsFetch('/api/projects/?page=1&page_size=1');
+    await lsFetch('/api/projects/?page=1&page_size=1');
     setTaskStatus('✅ LS 已连接', 'ok');
     return true;
   } catch (err) {
@@ -360,61 +399,36 @@ async function checkLSConnection() {
 
 async function fetchNextTask() {
   if (state.shots.length && !confirm('当前修改未提交，确认载入新任务吗？')) return;
-  // 清空当前状态
-  state.shots = [];
-  selectedTarget = null;
-  els.rawInput.value = '';
-  render();
+  state.shots = []; selectedTarget = null; els.rawInput.value = ''; render();
   await loadNextTask();
 }
 
 async function submitAndNext(discard) {
   if (!currentTaskId) { alert('没有活跃任务'); return; }
-  if (!discard) {
-    if (!state.shots.length && !els.rawInput.value.trim()) {
-      alert('没有可提交的内容。请先修改或选择"丢弃此条"。');
-      return;
-    }
+  if (!discard && !state.shots.length && !els.rawInput.value.trim()) {
+    alert('没有可提交的内容。请先修改或选择"丢弃此条"。');
+    return;
   }
   setSubmitStatus('提交中...', 'loading');
   document.getElementById('btnSubmit').disabled = true;
   document.getElementById('btnDiscard').disabled = true;
   try {
-    var text = '';
-    if (!discard) {
-      text = state.shots.length ? generateOutput() : (els.rawInput.value || '');
-    }
-    var body = {
-      result: [
-        {
-          from_name: 'caption_v5_translate_update',
-          to_name: 'video',
-          type: 'textarea',
-          value: { text: [text] }
-        },
-        {
-          from_name: 'choice0',
-          to_name: 'video',
-          type: 'choices',
-          value: { choices: [discard ? '是' : '否'] }
-        }
-      ]
-    };
+    var text = discard ? '' : (state.shots.length ? generateOutput() : (els.rawInput.value || ''));
     await lsFetch('/api/tasks/' + currentTaskId + '/annotations/', {
       method: 'POST',
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        result: [
+          { from_name: 'caption_v5_translate_update', to_name: 'video', type: 'textarea', value: { text: [text] } },
+          { from_name: 'choice0', to_name: 'video', type: 'choices', value: { choices: [discard ? '是' : '否'] } }
+        ]
+      })
     });
     var action = discard ? '已丢弃' : '已提交';
     setSubmitStatus(action + ' ✅', 'ok');
     setTaskStatus(action, 'ok');
-    // 清空状态
-    state.shots = [];
-    selectedTarget = null;
-    currentTaskId = null;
-    els.rawInput.value = '';
-    render();
+    state.shots = []; selectedTarget = null; currentTaskId = null;
+    els.rawInput.value = ''; render();
     document.getElementById('submitBar').classList.add('hidden');
-    // 直接调用（无setTimeout），内部有重试逻辑
     await loadNextTask();
   } catch (err) {
     setSubmitStatus('❌ 提交失败: ' + err.message, 'error');
@@ -427,89 +441,55 @@ async function submitAndNext(discard) {
 async function loadNextTask() {
   setTaskStatus('正在获取下一任务...', 'loading');
   document.getElementById('btnFetchTask').disabled = true;
+  var pid = getProjectId();
   try {
-    var retries = 0;
-    var maxRetries = 5;
-    var unlabeled = null;
-    var allTasks = [];
-
+    var retries = 0, maxRetries = 5, unlabeled = null;
     while (retries < maxRetries && !unlabeled) {
-      if (retries > 0) {
-        await new Promise(function(r) { setTimeout(r, 600); });
-      }
+      if (retries > 0) await new Promise(function(r) { setTimeout(r, 600); });
       retries++;
-
-      var data = await lsFetch('/api/tasks/?project=4296&page=1&page_size=100');
+      var data = await lsFetch('/api/tasks/?project=' + pid + '&page=1&page_size=100');
       var tasks = data.results || data.tasks || [];
-      allTasks = tasks;
-
       for (var i = 0; i < tasks.length; i++) {
         if (!tasks[i].is_labeled && (!tasks[i].annotations || tasks[i].annotations.length === 0)) {
-          unlabeled = tasks[i];
-          break;
+          unlabeled = tasks[i]; break;
         }
       }
-
       if (!unlabeled) {
         var total = data.total || data.count || 0;
         if (total > tasks.length) {
-          var page2 = await lsFetch('/api/tasks/?project=4296&page=2&page_size=100');
-          var tasks2 = page2.results || page2.tasks || [];
-          allTasks = allTasks.concat(tasks2);
+          var data2 = await lsFetch('/api/tasks/?project=' + pid + '&page=2&page_size=100');
+          var tasks2 = data2.results || data2.tasks || [];
           for (var j = 0; j < tasks2.length; j++) {
             if (!tasks2[j].is_labeled && (!tasks2[j].annotations || tasks2[j].annotations.length === 0)) {
-              unlabeled = tasks2[j];
-              break;
+              unlabeled = tasks2[j]; break;
             }
           }
         }
       }
     }
-
-    if (!unlabeled) {
-      setTaskStatus('✅ 所有任务已完成！', 'ok');
-      return;
-    }
-
-    // 加载找到的任务
+    if (!unlabeled) { setTaskStatus('✅ 所有任务已完成！', 'ok'); return; }
     currentTaskId = unlabeled.id;
     var taskData = unlabeled.data || {};
     var captionText = taskData.caption_v5_translate || '';
-
     document.getElementById('taskId').textContent = currentTaskId;
     document.getElementById('memoText').textContent = taskData.memo || '-';
     document.getElementById('taskBar').classList.remove('hidden');
     document.getElementById('submitBar').classList.remove('hidden');
-
     els.rawInput.value = captionText;
     els.leftPaneTitle.textContent = '原始机标 / 导出结果';
     document.getElementById('btnCopyOutput').classList.add('hidden');
-
     var videoUrl = taskData.video_url;
     var videoLink = document.getElementById('videoLink');
-    if (videoUrl) {
-      videoLink.href = videoUrl;
-      videoLink.classList.remove('hidden');
-    } else {
-      videoLink.classList.add('hidden');
-    }
-
+    if (videoUrl) { videoLink.href = videoUrl; videoLink.classList.remove('hidden'); }
+    else { videoLink.classList.add('hidden'); }
     setTaskStatus('任务 #' + currentTaskId + ' 已加载', 'ok');
     setSubmitStatus('请修改后提交，或点击丢弃', '');
     document.getElementById('btnSubmit').disabled = false;
     document.getElementById('btnDiscard').disabled = false;
-
-
-    state.shots = [];
-    selectedTarget = null;
+    state.shots = []; selectedTarget = null;
     var shots = parseCaption(captionText);
-    if (shots.length) {
-      state.shots = shots;
-      render();
-    } else {
-      render();
-      setTaskStatus('⚠️ 任务 #' + currentTaskId + ' 解析无镜头', 'error');
-    }
+    if (shots.length) { state.shots = shots; render(); }
+    else { render(); setTaskStatus('⚠️ 任务 #' + currentTaskId + ' 解析无镜头', 'error'); }
   } catch (err) {
     setTaskStatus('❌ 获取下一任务失败: ' + err.message, 'error');
   } finally {
@@ -517,54 +497,30 @@ async function loadNextTask() {
   }
 }
 
-// LS 按钮事件绑定
+// 设置面板
+function showSettings() {
+  document.getElementById('settingLSBase').value = getLSBase();
+  document.getElementById('settingProjectId').value = getProjectId();
+  document.getElementById('settingsOverlay').classList.remove('hidden');
+}
+function hideSettings() {
+  document.getElementById('settingsOverlay').classList.add('hidden');
+}
+
+// 按钮事件
 document.getElementById('btnFetchTask').addEventListener('click', fetchNextTask);
-
-document.getElementById('btnSubmit').addEventListener('click', function() {
-  submitAndNext(false);
-});
-
+document.getElementById('btnSubmit').addEventListener('click', function() { submitAndNext(false); });
 document.getElementById('btnDiscard').addEventListener('click', function() {
   if (!confirm('确认丢弃此任务？不会提交任何修改内容。')) return;
   submitAndNext(true);
 });
-
-// 桥接拉取
-document.getElementById('btnBridgeFetch').addEventListener('click', async function() {
-  if (state.shots.length && !confirm('当前修改未提交，确认加载新任务吗？')) return;
-  try {
-    var resp = await fetch('/api/check-bridge');
-    var data = await resp.json();
-    if (!data || !data.caption_v5_translate) {
-      alert('暂无桥接数据。\n请先在 LS 页面上点击「LS桥接」书签。');
-      return;
-    }
-    currentTaskId = data.task_id || 0;
-    document.getElementById('taskId').textContent = currentTaskId;
-    document.getElementById('memoText').textContent = data.memo || '-';
-    document.getElementById('taskBar').classList.remove('hidden');
-    document.getElementById('submitBar').classList.remove('hidden');
-    var videoLink = document.getElementById('videoLink');
-    if (data.video_url) {
-      videoLink.href = data.video_url;
-      videoLink.classList.remove('hidden');
-    } else { videoLink.classList.add('hidden'); }
-    setTaskStatus('桥接任务 #' + currentTaskId + ' 已加载', 'ok');
-    setSubmitStatus('请修改后提交，或点击丢弃', '');
-    document.getElementById('btnSubmit').disabled = false;
-    document.getElementById('btnDiscard').disabled = false;
-    var captionText = data.caption_v5_translate || '';
-    els.rawInput.value = captionText;
-    els.leftPaneTitle.textContent = '原始机标 / 导出结果';
-    document.getElementById('btnCopyOutput').classList.add('hidden');
-    state.shots = [];
-    selectedTarget = null;
-    var shots = parseCaption(captionText);
-    if (shots.length) { state.shots = shots; render(); }
-    else { render(); }
-  } catch (err) {
-    alert('桥接拉取失败: ' + err.message + '\n请确认服务器已启动（python3 server.py）');
-  }
+document.getElementById('btnSettings').addEventListener('click', showSettings);
+document.getElementById('btnCloseSettings').addEventListener('click', hideSettings);
+document.getElementById('btnSaveSettings').addEventListener('click', function() {
+  saveSettings();
+  hideSettings();
+  setTaskStatus('设置已保存', 'ok');
+  checkLSConnection();
 });
 
 // 页面加载后检测 LS 连通性
