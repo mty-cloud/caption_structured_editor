@@ -6,25 +6,30 @@
 
 ---
 
-## 🚀 快速使用（下载即用）
+## 🚀 快速使用（无需安装任何东西）
 
-### 方式一：直接下载（推荐）
+### 方式一：在线使用（推荐，无需下载）
 
-1. 前往 [GitHub Releases](https://github.com/mty-cloud/caption_structured_editor/releases) 页面
-2. 下载最新版本的 `caption_structured_editor_v*.zip`
-3. 解压后，**双击打开 `index.html`** 即可使用
+直接打开浏览器访问：  
+**https://mty-cloud.github.io/caption_structured_editor/**
 
-### 方式二：克隆仓库
+复制这个链接分享给别人即可使用，手机也能打开。
+
+### 方式二：下载单文件（存到本地用）
+
+1. 打开 [index_standalone.html](https://raw.githubusercontent.com/mty-cloud/caption_structured_editor/main/index_standalone.html)
+2. 右键 → 另存为 → 保存到电脑上
+3. **双击打开**即可使用，只有一个文件
+
+> 或者从 [GitHub 仓库](https://github.com/mty-cloud/caption_structured_editor) 下载 `index_standalone.html`
+
+### 方式三：完整项目
 
 ```bash
 git clone https://github.com/mty-cloud/caption_structured_editor.git
 cd caption_structured_editor
-# 直接双击 index.html 即可
+# 双击 index.html 即可
 ```
-
-### 方式三：在线使用（GitHub Pages）
-
-访问：https://mty-cloud.github.io/caption_structured_editor/
 
 ---
 
