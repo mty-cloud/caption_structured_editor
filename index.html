@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>机标结构化修改器</title>
   <style>
 :root {
@@ -164,6 +167,31 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
 .modal-btn-muted { color: var(--muted) !important; border-color: #d1d5db !important; background: #f9fafb !important; }
 .modal-btn-muted:hover { background: #f3f4f6 !important; border-color: #9ca3af !important; }
 .modal-btn-cancel { text-align: center !important; color: #9ca3af !important; margin-top: 2px; }
+/* ===== LS 连接功能 ===== */
+.task-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 16px; margin-bottom: 10px;
+  background: #f0f4ff; border: 1px solid #cdd9f0;
+  border-radius: 10px; font-size: 13px;
+}
+.task-bar .task-id { font-weight: 700; color: #1e40af; }
+.task-bar .task-memo { color: #4b5563; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-bar .task-status { margin-left: auto; font-size: 12px; white-space: nowrap; }
+.task-bar .task-status.ok { color: #16a34a; }
+.task-bar .task-status.error { color: #dc2626; }
+.task-bar .task-status.loading { color: #d97706; }
+.submit-bar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+.submit-bar .submit-status { margin-left: auto; font-size: 13px; }
+.submit-bar .submit-status.ok { color: #16a34a; }
+.submit-bar .submit-status.error { color: #dc2626; }
+.submit-bar .submit-status.loading { color: #d97706; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -174,10 +202,17 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
         <p>把机标文本拆成「镜头 → 说话单元 → 字段」模块，修改后自动生成标准文本。</p>
       </div>
       <div class="header-actions">
+        <button id="btnFetchTask" class="btn ghost">📥 从LS拉取</button>
         <button id="btnLoadSample" class="btn ghost">载入示例</button>
         <button id="btnReset" class="btn danger-ghost">清空</button>
       </div>
     </header>
+    <div id="taskBar" class="task-bar hidden">
+      <span>📌 任务 #<span id="taskId" class="task-id">-</span></span>
+      <span class="task-memo">｜ 备注: <span id="memoText">-</span></span>
+      <a id="videoLink" href="#" target="_blank" class="btn small hidden">▶ 打开视频</a>
+      <span id="taskStatus" class="task-status"></span>
+    </div>
     <main class="app-shell">
       <section class="left-pane">
         <div class="pane-header">
@@ -202,6 +237,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
           </div>
         </div>
         <div id="validationBox" class="validation-box muted">暂无校验结果。</div>
+        <div id="submitBar" class="submit-bar hidden">
+          <button id="btnDiscard" class="btn danger small">🗑 丢弃此条</button>
+          <button id="btnSubmit" class="btn primary small">✅ 提交并下一个</button>
+          <span id="submitStatus" class="submit-status"></span>
+        </div>
       </section>
     </main>
   </div>
@@ -272,6 +312,224 @@ document.addEventListener('click',function(e){var btn=e.target.closest("[data-ac
 document.addEventListener('keydown',function(e){if(e.key!=='Delete'&&e.key!=='Backspace') return; var act=document.activeElement; var typing=act&&['INPUT','TEXTAREA'].includes(act.tagName); if(typing) return; if(!selectedTarget) return; e.preventDefault(); if(selectedTarget.type==='shot'){var si=selectedTarget.shotIndex; var shot=state.shots[si]; if(!shot) return; showDelDialog(si).then(function(m){if(m==='cancel') return; var ds=state.shots[si]; if(m==='up'&&si>0) state.shots[si-1].shot_end=ds.shot_end; else if(m==='down'&&si<state.shots.length-1) state.shots[si+1].shot_start=ds.shot_start; state.shots.splice(si,1); selectedTarget=null; render();}); return;} if(selectedTarget.type==='utterance'){var s=state.shots[selectedTarget.shotIndex]; if(!s) return; if(!confirm('确认删除说话单元 '+(selectedTarget.uttIndex+1)+' 吗？')) return; s.utterances.splice(selectedTarget.uttIndex,1); selectedTarget=null; render();}});
 function showContextMenu(x,y,sid,uid){closeContextMenu(); var tpl=document.getElementById('contextMenuTemplate'); var menu=tpl.content.firstElementChild.cloneNode(true); menu.style.left=x+'px'; menu.style.top=y+'px'; menu.dataset.shotId=sid; menu.dataset.uttId=uid; menu.addEventListener('click',function(e){var act=e.target.dataset.contextAction; if(!act) return; handleAction(act==='duplicate'?'duplicate-utt':'delete-utt',sid,uid); closeContextMenu();}); document.body.appendChild(menu);}
 function closeContextMenu(){document.querySelectorAll('.context-menu').forEach(function(m){m.remove();});}
+// ==================== LS API 连接功能 ====================
+const LS_BASE = 'http://115.191.32.74:30014';
+const LS_TOKEN = 'f1189e9eafd25393abaf1eac483290f3b62fb204';
+var currentTaskId = null;
+
+async function lsFetch(path, opts) {
+  if (!opts) opts = {};
+  opts.headers = opts.headers || {};
+  opts.headers['Authorization'] = 'Token ' + LS_TOKEN;
+  if (!(opts.body instanceof FormData)) {
+    opts.headers['Content-Type'] = 'application/json';
+  }
+  var resp = await fetch(LS_BASE + path, opts);
+  if (!resp.ok) {
+    var errText = '';
+    try { errText = await resp.text(); } catch(e) {}
+    throw new Error('LS API ' + resp.status + ': ' + (errText || resp.statusText).slice(0, 200));
+  }
+  var text = await resp.text();
+  return text && text.trim() ? JSON.parse(text) : null;
+}
+
+function setTaskStatus(msg, type) {
+  var el = document.getElementById('taskStatus');
+  el.textContent = msg;
+  el.className = 'task-status' + (type ? ' ' + type : '');
+}
+
+function setSubmitStatus(msg, type) {
+  var el = document.getElementById('submitStatus');
+  el.textContent = msg;
+  el.className = 'submit-status' + (type ? ' ' + type : '');
+}
+
+async function checkLSConnection() {
+  try {
+    var data = await lsFetch('/api/projects/?page=1&page_size=1');
+    setTaskStatus('✅ LS 已连接', 'ok');
+    return true;
+  } catch (err) {
+    setTaskStatus('⚠️ LS 未连接: ' + err.message, 'error');
+    return false;
+  }
+}
+
+async function fetchNextTask() {
+  if (state.shots.length && !confirm('当前修改未提交，确认载入新任务吗？')) return;
+  // 清空当前状态
+  state.shots = [];
+  selectedTarget = null;
+  els.rawInput.value = '';
+  render();
+  await loadNextTask();
+}
+
+async function submitAndNext(discard) {
+  if (!currentTaskId) { alert('没有活跃任务'); return; }
+  if (!discard) {
+    if (!state.shots.length && !els.rawInput.value.trim()) {
+      alert('没有可提交的内容。请先修改或选择"丢弃此条"。');
+      return;
+    }
+  }
+  setSubmitStatus('提交中...', 'loading');
+  document.getElementById('btnSubmit').disabled = true;
+  document.getElementById('btnDiscard').disabled = true;
+  try {
+    var text = '';
+    if (!discard) {
+      text = state.shots.length ? generateOutput() : (els.rawInput.value || '');
+    }
+    var body = {
+      result: [
+        {
+          from_name: 'caption_v5_translate_update',
+          to_name: 'video',
+          type: 'textarea',
+          value: { text: [text] }
+        },
+        {
+          from_name: 'choice0',
+          to_name: 'video',
+          type: 'choices',
+          value: { choices: [discard ? '是' : '否'] }
+        }
+      ]
+    };
+    await lsFetch('/api/tasks/' + currentTaskId + '/annotations/', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    var action = discard ? '已丢弃' : '已提交';
+    setSubmitStatus(action + ' ✅', 'ok');
+    setTaskStatus(action, 'ok');
+    // 清空状态
+    state.shots = [];
+    selectedTarget = null;
+    currentTaskId = null;
+    els.rawInput.value = '';
+    render();
+    document.getElementById('submitBar').classList.add('hidden');
+    // 直接调用（无setTimeout），内部有重试逻辑
+    await loadNextTask();
+  } catch (err) {
+    setSubmitStatus('❌ 提交失败: ' + err.message, 'error');
+  } finally {
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnDiscard').disabled = false;
+  }
+}
+
+async function loadNextTask() {
+  setTaskStatus('正在获取下一任务...', 'loading');
+  document.getElementById('btnFetchTask').disabled = true;
+  try {
+    var retries = 0;
+    var maxRetries = 5;
+    var unlabeled = null;
+    var allTasks = [];
+
+    while (retries < maxRetries && !unlabeled) {
+      if (retries > 0) {
+        await new Promise(function(r) { setTimeout(r, 600); });
+      }
+      retries++;
+
+      var data = await lsFetch('/api/tasks/?project=4296&page=1&page_size=100');
+      var tasks = data.results || data.tasks || [];
+      allTasks = tasks;
+
+      for (var i = 0; i < tasks.length; i++) {
+        if (!tasks[i].is_labeled && (!tasks[i].annotations || tasks[i].annotations.length === 0)) {
+          unlabeled = tasks[i];
+          break;
+        }
+      }
+
+      if (!unlabeled) {
+        var total = data.total || data.count || 0;
+        if (total > tasks.length) {
+          var page2 = await lsFetch('/api/tasks/?project=4296&page=2&page_size=100');
+          var tasks2 = page2.results || page2.tasks || [];
+          allTasks = allTasks.concat(tasks2);
+          for (var j = 0; j < tasks2.length; j++) {
+            if (!tasks2[j].is_labeled && (!tasks2[j].annotations || tasks2[j].annotations.length === 0)) {
+              unlabeled = tasks2[j];
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!unlabeled) {
+      setTaskStatus('✅ 所有任务已完成！', 'ok');
+      return;
+    }
+
+    // 加载找到的任务
+    currentTaskId = unlabeled.id;
+    var taskData = unlabeled.data || {};
+    var captionText = taskData.caption_v5_translate || '';
+
+    document.getElementById('taskId').textContent = currentTaskId;
+    document.getElementById('memoText').textContent = taskData.memo || '-';
+    document.getElementById('taskBar').classList.remove('hidden');
+    document.getElementById('submitBar').classList.remove('hidden');
+
+    els.rawInput.value = captionText;
+    els.leftPaneTitle.textContent = '原始机标 / 导出结果';
+    document.getElementById('btnCopyOutput').classList.add('hidden');
+
+    var videoUrl = taskData.video_url;
+    var videoLink = document.getElementById('videoLink');
+    if (videoUrl) {
+      videoLink.href = videoUrl;
+      videoLink.classList.remove('hidden');
+    } else {
+      videoLink.classList.add('hidden');
+    }
+
+    setTaskStatus('任务 #' + currentTaskId + ' 已加载', 'ok');
+    setSubmitStatus('请修改后提交，或点击丢弃', '');
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnDiscard').disabled = false;
+
+
+    state.shots = [];
+    selectedTarget = null;
+    var shots = parseCaption(captionText);
+    if (shots.length) {
+      state.shots = shots;
+      render();
+    } else {
+      render();
+      setTaskStatus('⚠️ 任务 #' + currentTaskId + ' 解析无镜头', 'error');
+    }
+  } catch (err) {
+    setTaskStatus('❌ 获取下一任务失败: ' + err.message, 'error');
+  } finally {
+    document.getElementById('btnFetchTask').disabled = false;
+  }
+}
+
+// LS 按钮事件绑定
+document.getElementById('btnFetchTask').addEventListener('click', fetchNextTask);
+
+document.getElementById('btnSubmit').addEventListener('click', function() {
+  submitAndNext(false);
+});
+
+document.getElementById('btnDiscard').addEventListener('click', function() {
+  if (!confirm('确认丢弃此任务？不会提交任何修改内容。')) return;
+  submitAndNext(true);
+});
+
+// 页面加载后检测 LS 连通性
+setTimeout(function() { checkLSConnection(); }, 100);
 render();
   </script>
 </body>
