@@ -193,9 +193,9 @@ function createBlankUtterance(shot, base = null) {
     content: base?.content ?? "",
     start: base?.end ?? base?.start ?? shot.shot_start ?? "",
     end: base?.end ?? shot.shot_end ?? "",
-    speaker: base?.speaker ?? "speaker_0",
-    gender: base?.gender ?? "男",
-    visible: base?.visible ?? "不确定",
+    speaker: base?.speaker ?? "",
+    gender: base?.gender ?? "",
+    visible: base?.visible ?? "",
   };
 }
 
