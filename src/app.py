@@ -52,14 +52,14 @@ FONT_TITLE = ("PingFang SC", 14, "bold")
 # 自定义可滚动 Frame
 # ===================================================================
 
-class ScrollableFrame(ttk.Frame):
+class ScrollableFrame(tk.Frame):
     """支持鼠标滚轮滑动的 Canvas 容器。"""
 
     def __init__(self, master, **kwargs):
-        super().__init__(master, **kwargs)
+        super().__init__(master, bg=APP_BG, **kwargs)
         self.canvas = tk.Canvas(self, highlightthickness=0, bd=0, bg=APP_BG)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.inner = ttk.Frame(self.canvas)
+        self.inner = tk.Frame(self.canvas, bg=APP_BG)
 
         self.inner.bind("<Configure>", lambda _: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self._window_id = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
