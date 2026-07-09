@@ -32,13 +32,13 @@ jobs:
       - name: Compress .app
         run: |
           cd dist
-          zip -r ../机标结构化修改器-Mac.zip 机标结构化修改器.app
+          zip -r ../caption_editor_Mac.zip 机标结构化修改器.app
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 机标结构化修改器-Mac
-          path: 机标结构化修改器-Mac.zip
+          name: caption_editor_Mac
+          path: caption_editor_Mac.zip
 
   build-windows:
     name: Build Windows .exe
@@ -62,13 +62,13 @@ jobs:
       - name: Compress .exe
         run: |
           cd dist
-          powershell Compress-Archive -Path 机标结构化修改器.exe -DestinationPath ../机标结构化修改器-Windows.zip
+          powershell Compress-Archive -Path 机标结构化修改器.exe -DestinationPath ../caption_editor_Windows.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 机标结构化修改器-Windows
-          path: 机标结构化修改器-Windows.zip
+          name: caption_editor_Windows
+          path: caption_editor_Windows.zip
 
   create-release:
     name: Create Release
@@ -94,13 +94,13 @@ jobs:
           body: |
             下载对应平台的版本：
 
-            - **Windows**: `机标结构化修改器-Windows.zip` — 解压后双击 `.exe` 运行
-            - **macOS**: `机标结构化修改器-Mac.zip` — 解压后双击 `.app` 运行
+            - **Windows**: `caption_editor_Windows.zip` — 解压后双击 `机标结构化修改器.exe` 运行
+            - **macOS**: `caption_editor_Mac.zip` — 解压后双击 `机标结构化修改器.app` 运行
 
             > 无需安装 Python，下载即用。
           files: |
-            artifacts/机标结构化修改器-Mac/机标结构化修改器-Mac.zip
-            artifacts/机标结构化修改器-Windows/机标结构化修改器-Windows.zip
+            artifacts/caption_editor_Mac/caption_editor_Mac.zip
+            artifacts/caption_editor_Windows/caption_editor_Windows.zip
           draft: false
           prerelease: false
         env:
