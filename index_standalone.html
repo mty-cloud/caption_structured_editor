@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>机标结构化修改器</title>
+  <style>
+:root {
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --text: #172033;
+  --muted: #6b7280;
+  --border: #d9dee8;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --success: #16a34a;
+  --shot: #eef5ff;
+  --utterance: #ffffff;
+  --field-bg: #f8fafc;
+  --shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+#app { max-width: 1480px; margin: 0 auto; padding: 18px; }
+.app-header {
+  display: flex; justify-content: space-between; gap: 16px; align-items: center;
+  padding: 18px 20px; margin-bottom: 14px; border-radius: var(--radius);
+  background: linear-gradient(120deg, #172033, #1e3a8a); color: white; box-shadow: var(--shadow);
+}
+.app-header h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: 0.5px; }
+.app-header p { margin: 0; opacity: 0.86; }
+.header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn {
+  border: 1px solid var(--border); background: #fff; color: var(--text);
+  border-radius: 10px; padding: 8px 12px; font-size: 14px; cursor: pointer; transition: all 0.15s ease;
+}
+.btn:hover { border-color: #9ca3af; background: #f9fafb; }
+.btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn.primary:hover { background: var(--primary-dark); }
+.btn.ghost { background: rgba(255,255,255,0.12); color: white; border-color: rgba(255,255,255,0.35); }
+.btn.ghost:hover { background: rgba(255,255,255,0.2); }
+.btn.danger-ghost { background: rgba(220,38,38,0.14); color: white; border-color: rgba(255,255,255,0.25); }
+.btn.small { padding: 5px 8px; font-size: 12px; border-radius: 8px; }
+.btn.danger { color: white; border-color: var(--danger); background: var(--danger); }
+.btn.icon { padding: 5px 9px; }
+input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.app-shell {
+  display: grid; grid-template-columns: 42% 58%; height: calc(100vh - 120px); gap: 12px; box-sizing: border-box;
+}
+.left-pane, .right-pane {
+  min-height: 0; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.pane-header {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-bottom: 1px solid #e5e7eb; background: #f8fafc;
+}
+.pane-header h2 { margin: 0; font-size: 15px; white-space: nowrap; }
+.raw-textarea {
+  flex: 1; width: 100%; resize: none; border: 0; outline: none; padding: 14px;
+  font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: 13px; line-height: 1.6;
+  background: #fbfdff;
+}
+.raw-textarea:focus { box-shadow: inset 0 0 0 3px rgba(37,99,235,0.12); }
+.editor-root { flex: 1; overflow: auto; padding: 12px; }
+.hidden { display: none !important; }
+.empty-state { text-align: center; color: var(--muted); }
+.empty-title { font-size: 18px; font-weight: 700; color: #374151; margin-bottom: 6px; }
+.validation-box {
+  flex: 0 0 auto; max-height: 120px; overflow: auto; font-size: 13px; line-height: 1.55;
+  border-top: 1px solid #e5e7eb; padding: 8px 12px; background: #f9fafb;
+}
+.validation-box.muted { color: var(--muted); }
+.validation-item { padding: 4px 6px; border-radius: 6px; margin-bottom: 3px; }
+.validation-item.error { background: #fef2f2; color: #991b1b; }
+.validation-item.warn { background: #fffbeb; color: #92400e; }
+.validation-item.ok { background: #f0fdf4; color: #166534; }
+.summary-bar {
+  margin-bottom: 12px; padding: 8px 12px; border: 1px dashed #c8d2e4;
+  background: #f8fbff; color: var(--muted); border-radius: 10px; font-size: 13px; line-height: 1.5;
+}
+.shot-card {
+  border: 2px solid #e5e7eb; border-radius: 12px; margin-bottom: 12px; background: #ffffff;
+  overflow: hidden; transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; cursor: default;
+}
+.shot-card:hover { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.25); }
+.shot-card.selected { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.22); background: #eff6ff; }
+.shot-card.invalid { border-color: #fca5a5; background: #fff7f7; }
+.shot-card.invalid.selected { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.18); }
+.shot-card.warning { border-color: #fbbf24; }
+.shot-header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 12px; background: #f1f5f9; border-bottom: 1px solid #e5e7eb;
+}
+.shot-title { display: flex; align-items: center; gap: 8px; font-weight: 800; color: #173b77; white-space: nowrap; }
+.shot-badge {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--primary); color: white;
+}
+.shot-time { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #334155; font-size: 13px; }
+.field-input, .field-select, .content-input {
+  border: 1px solid var(--border); border-radius: 9px; padding: 7px 9px;
+  background: white; color: var(--text); font-size: 13px;
+}
+.field-input.time { width: 86px; }
+.shot-actions, .utt-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.utterances { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.utterance-card {
+  margin: 10px 0; padding: 10px; border: 1.5px solid #e5e7eb;
+  border-radius: 10px; background: #ffffff;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; cursor: default;
+}
+.utterance-card:hover { border-color: #bfdbfe; box-shadow: 0 0 0 2px rgba(191,219,254,0.45); }
+.utterance-card.selected { border-color: #2563eb; background: #eff6ff; box-shadow: 0 0 0 2px rgba(37,99,235,0.18); }
+.utterance-card.invalid { border-color: #fca5a5; background: #fffafa; }
+.utt-header { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 10px; }
+.utt-title { font-weight: 800; color: #334155; }
+.utt-grid { display: flex; flex-direction: column; gap: 8px; }
+.utt-content-group { flex: 1; }
+.utt-time-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.utt-hover-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f1f5f9; }
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+.field-group label { font-size: 12px; font-weight: 700; color: #64748b; }
+.content-input { min-height: 68px; resize: vertical; line-height: 1.45; }
+.hover-select { position: relative; display: inline-flex; align-items: center; gap: 6px; margin: 4px 8px 4px 0; }
+.field-label { font-size: 12px; color: #64748b; }
+.field-chip {
+  display: inline-flex; align-items: center; min-width: 54px; padding: 4px 9px;
+  border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 13px; font-weight: 600; cursor: default;
+}
+.hover-menu { display: none; position: absolute; z-index: 50; left: 0; top: 100%; margin-top: 4px; padding: 6px;
+  background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 10px 28px rgba(15,23,42,0.18); white-space: nowrap; }
+.hover-select:hover .hover-menu { display: flex; gap: 5px; }
+.hover-option { border: 0; border-radius: 999px; padding: 5px 10px; background: #f1f5f9; color: #0f172a; font-size: 13px; cursor: pointer; }
+.hover-option:hover { background: #bfdbfe; }
+.hover-option.active { background: #2563eb; color: #ffffff; }
+.empty-utterance { color: var(--muted); border: 1px dashed #cbd5e1; background: rgba(255,255,255,0.55); padding: 14px; border-radius: 12px; text-align: center; }
+.status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; background: var(--success); }
+.status-dot.warn { background: var(--warning); }
+.status-dot.err { background: var(--danger); }
+.context-menu { position: fixed; z-index: 99; min-width: 160px; background: white; border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: 10px; padding: 6px; }
+.context-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.context-menu button:hover { background: #f1f5f9; }
+.danger-text { color: var(--danger); }
+@media (max-width: 1050px) { .app-shell { grid-template-columns: 1fr; height: auto; } .left-pane { min-height: 200px; } .right-pane { min-height: 400px; } }
+@media (max-width: 640px) { #app { padding: 10px; } .app-header { flex-direction: column; align-items: stretch; } .shot-header { flex-direction: column; align-items: stretch; } .utt-time-group { flex-direction: column; } }
+.modal-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(15,23,42,0.45); display: grid; place-items: center; animation: fadeIn 0.15s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-box { background: #fff; border-radius: 16px; padding: 24px 24px 16px; min-width: 340px; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.18); animation: slideUp 0.15s ease; }
+@keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+.modal-desc { font-size: 14px; color: var(--muted); margin: 0 0 16px; line-height: 1.5; }
+.modal-actions { display: flex; flex-direction: column; gap: 8px; }
+.modal-btn { padding: 10px 14px !important; font-size: 14px !important; border-radius: 10px !important; text-align: left !important; line-height: 1.4; }
+.modal-btn small { display: block; font-weight: 400; font-size: 12px; opacity: 0.75; margin-top: 2px; }
+.modal-btn-muted { color: var(--muted) !important; border-color: #d1d5db !important; background: #f9fafb !important; }
+.modal-btn-muted:hover { background: #f3f4f6 !important; border-color: #9ca3af !important; }
+.modal-btn-cancel { text-align: center !important; color: #9ca3af !important; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div>
+        <h1>机标结构化修改器</h1>
+        <p>把机标文本拆成「镜头 → 说话单元 → 字段」模块，修改后自动生成标准文本。</p>
+      </div>
+      <div class="header-actions">
+        <button id="btnLoadSample" class="btn ghost">载入示例</button>
+        <button id="btnReset" class="btn danger-ghost">清空</button>
+      </div>
+    </header>
+    <main class="app-shell">
+      <section class="left-pane">
+        <div class="pane-header">
+          <h2 id="leftPaneTitle">原始机标 / 导出结果</h2>
+          <button id="btnPaste" class="btn small">粘贴</button>
+          <button id="btnParse" class="btn primary small">解析成模块</button>
+          <button id="btnExport" class="btn small">导出到左侧</button>
+          <button id="btnCopyOutput" class="btn primary small hidden">复制结果</button>
+        </div>
+        <textarea id="rawInput" class="raw-textarea" spellcheck="false" placeholder="在这里粘贴原始机标文本，例如：\n[镜头 1][0.00s-0.76s]\n{...}"></textarea>
+      </section>
+      <section class="right-pane">
+        <div class="pane-header">
+          <h2>结构化修改</h2>
+          <button id="btnAddShot" class="btn small">+ 新增镜头</button>
+          <button id="btnValidate" class="btn small">校验</button>
+        </div>
+        <div id="editor" class="editor-root">
+          <div class="empty-state">
+            <div class="empty-title">还没有解析内容</div>
+            <div class="empty-text">粘贴机标后点击「解析成模块」。</div>
+          </div>
+        </div>
+        <div id="validationBox" class="validation-box muted">暂无校验结果。</div>
+      </section>
+    </main>
+  </div>
+  <template id="contextMenuTemplate">
+    <div class="context-menu" role="menu">
+      <button data-context-action="duplicate">复制这个说话单元</button>
+      <button data-context-action="delete" class="danger-text">删除这个说话单元</button>
+    </div>
+  </template>
+  <script>
+const SAMPLE_TEXT = '[镜头 1][0.00s-0.76s]\n{"说话内容": "疼", "开始时间": 0.02, "结束时间": 0.52, "说话人": "speaker_0", "性别": "男", "是否人物可见": "不确定"}\n[镜头 2][0.80s-3.00s]\n{"说话内容": "，疼啊", "开始时间": 0.8, "结束时间": 3.44, "说话人": "speaker_0", "性别": "男", "是否人物可见": 是}\n[镜头 3][3.04s-5.12s]\n[镜头 4][5.16s-6.20s]\n[镜头 5][6.24s-7.68s]\n[镜头 6][7.72s-7.96s]\n{"说话内容": "我找", "开始时间": 7.72, "结束时间": 7.98, "说话人": "speaker_0", "性别": "男", "是否人物可见": 否}';
+const SPEAKER_OPTIONS = Array.from({ length: 8 }, (_, i) => 'speaker_' + i);
+const GENDER_OPTIONS = ['男', '女'];
+const VISIBLE_OPTIONS = ['是', '否', '不确定'];
+const state = { shots: [], contextTarget: null, validation: [] };
+let selectedTarget = null;
+const els = { rawInput: document.getElementById('rawInput'), editor: document.getElementById('editor'), validationBox: document.getElementById('validationBox'), leftPaneTitle: document.getElementById('leftPaneTitle') };
+function uid(prefix) { return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
+function escapeHtml(v) { return String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
+function parseNumber(v, fb) { if (v === null || v === undefined || v === '') return fb; var n = Number(String(v).replace(/[，,]/g, '').trim()); return Number.isFinite(n) ? n : fb; }
+function fmtTime(v) { var n = Number(v); return Number.isFinite(n) ? n.toFixed(2) : '0.00'; }
+function fmtNum(v) { var n = Number(v); return Number.isFinite(n) ? String(Math.round(n * 1000) / 1000) : '0'; }
+function normVisible(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['是','否','不确定'].includes(v) ? v : v || '不确定'; }
+function normGender(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['男','女'].includes(v) ? v : v || '男'; }
+function normSpeaker(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return /^speaker_\d+$/.test(v) ? v : /^\d+$/.test(v) ? 'speaker_' + v : v || 'speaker_0'; }
+function extractField(raw, key, opts) { opts = opts || {}; var text = String(raw || ''); var pats = [new RegExp('"' + key + '"\\s*[:：]\\s*"([^"]*)"', 'i'), new RegExp("'" + key + "'\\s*[:：]\\s*'([^']*)'", 'i'), new RegExp('"' + key + '"\\s*[:：]\\s*([^,，}]+)', 'i'), new RegExp(key + '\\s*[:：]\\s*([^,，}]+)', 'i')]; for (var pi = 0; pi < pats.length; pi++) { var m = text.match(pats[pi]); if (m) { var val = m[1].trim(); return opts.number ? parseNumber(val, opts.fallback) : val.replace(/^"|"$/g, ''); } } return opts.fallback !== undefined ? opts.fallback : ''; }
+function parseUtt(t) { return { id: uid('utt'), content: extractField(t, '说话内容'), start: extractField(t, '开始时间', {number:true}), end: extractField(t, '结束时间', {number:true}), speaker: normSpeaker(extractField(t, '说话人', {fallback:'speaker_0'})), gender: normGender(extractField(t, '性别', {fallback:'男'})), visible: normVisible(extractField(t, '是否人物可见', {fallback:'不确定'})) }; }
+function parseCaption(raw) { raw = String(raw || '').trim(); if (!raw) return []; var shots = []; var re = /\[镜头\s*(\d+)\]\s*\[\s*([\d.]+)s\s*-\s*([\d.]+)s\s*\]([\s\S]*?)(?=\n?\s*\[镜头\s*\d+\]\s*\[[^\]]+\]|$)/g; var m; while ((m = re.exec(raw)) !== null) { var body = m[4]; var utts = []; var ure = /\{[^{}]*\}/g; var om; while ((om = ure.exec(body)) !== null) utts.push(parseUtt(om[0])); shots.push({ id: uid('shot'), shot_no: Number(m[1]), shot_start: parseNumber(m[2], 0), shot_end: parseNumber(m[3], 0), collapsed: false, utterances: utts }); } return shots; }
+function blankShot(after) { var start = after ? Number(after.shot_end || 0) : 0; return { id: uid('shot'), shot_no: state.shots.length + 1, shot_start: start, shot_end: start, collapsed: false, utterances: [] }; }
+function blankShotBetween(prev, next) { var start = 0; if (prev && next) start = Math.round(((Number(prev.shot_end||0) + Number(next.shot_start||0)) / 2) * 100) / 100; else if (prev) start = Number(prev.shot_end || 0); else if (next) start = Math.max(0, Math.round((Number(next.shot_start||0) / 2) * 100) / 100); return { id: uid('shot'), shot_no: 0, shot_start: start, shot_end: start, collapsed: false, utterances: [] }; }
+function blankUtt(shot, base) { return { id: uid('utt'), content: base ? base.content : '', start: base ? base.end : shot.shot_start || '', end: base ? base.end : shot.shot_end || '', speaker: base ? base.speaker : 'speaker_0', gender: base ? base.gender : '男', visible: base ? base.visible : '不确定' }; }
+function findShot(id) { return state.shots.find(function(s){return s.id===id;}) || null; }
+function findUtt(shot, id) { return shot ? shot.utterances.find(function(u){return u.id===id;}) || null : null; }
+function renumber() { state.shots.forEach(function(s,i){s.shot_no=i+1;}); }
+function setSel(t) { selectedTarget = t; render(); }
+function isSelShot(i) { return selectedTarget && selectedTarget.type==='shot' && selectedTarget.shotIndex===i; }
+function isSelUtt(si, ui) { return selectedTarget && selectedTarget.type==='utterance' && selectedTarget.shotIndex===si && selectedTarget.uttIndex===ui; }
+function optHtml(opts, sel) { var list = []; for (var i = 0; i < opts.length; i++) { if (list.indexOf(opts[i]) < 0) list.push(opts[i]); } if (list.indexOf(sel) < 0) list.push(sel); return list.map(function(v){return '<option value="'+escapeHtml(v)+'"'+(v===sel?' selected':'')+'>'+escapeHtml(v)+'</option>';}).join(''); }
+function hoverSelect(opts) { var h = '<div class="hover-select"><span class="field-label">'+escapeHtml(opts.label)+'</span><span class="field-chip">'+escapeHtml(String(opts.value||'未填'))+'</span><div class="hover-menu">'; for (var i = 0; i < opts.options.length; i++) { var o = opts.options[i]; h += '<button class="hover-option'+(String(o)===String(opts.value)?' active':'')+'" data-action="set-field" data-shot-index="'+opts.shotIndex+'" data-utt-index="'+opts.uttIndex+'" data-field="'+opts.field+'" data-value="'+escapeHtml(String(o))+'">'+escapeHtml(String(o))+'</button>'; } return h + '</div></div>'; }
+function valClass(eid) { var items = state.validation.filter(function(v){return v.shotId===eid||v.uttId===eid;}); if (items.some(function(i){return i.level==='error';})) return 'invalid'; if (items.some(function(i){return i.level==='warn';})) return 'warning'; return ''; }
+function render() { renumber(); state.validation = validate(false); renderEditor(); renderVal(false); }
+function renderEditor() { if (!state.shots.length) { els.editor.className = 'editor-root'; els.editor.innerHTML = '<div class="empty-state"><div class="empty-title">还没有解析内容</div><div class="empty-text">粘贴机标后点击「解析成模块」。</div></div>'; return; } els.editor.className = 'editor-root'; var sc = state.shots.length; var uc = state.shots.reduce(function(s,sh){return s+sh.utterances.length;},0); var errs = state.validation.filter(function(v){return v.level==='error';}).length; els.editor.innerHTML = '<div class="summary-bar">已解析 <b>'+sc+'</b> 个镜头、<b>'+uc+'</b> 个说话单元。'+(errs?' <span class="danger-text"> 错误 '+errs+' 个</span>':'')+'</div>' + state.shots.map(function(shot,i){return renderShot(shot,i);}).join(''); }
+function renderShot(shot, si) { var inv = valClass(shot.id); var utts = shot.collapsed ? '' : '<div class="utterances">' + (shot.utterances.length ? shot.utterances.map(function(u,i){return renderUtt(shot,u,i);}).join('') : '<div class="empty-utterance">这个镜头暂无说话单元。点击「+ 说话单元」添加。</div>') + '</div>'; return '<article class="shot-card '+inv+(isSelShot(si)?' selected':'')+'" data-shot-id="'+shot.id+'" data-shot-index="'+si+'" tabindex="0"><div class="shot-header"><div class="shot-title"><span class="shot-badge">'+(si+1)+'</span> 镜头 '+(si+1)+'</div><div class="shot-time"><span>[</span><input class="field-input time shot-input" type="number" step="0.01" data-shot-id="'+shot.id+'" data-field="shot_start" value="'+escapeHtml(shot.shot_start)+'" /><span>s -</span><input class="field-input time shot-input" type="number" step="0.01" data-shot-id="'+shot.id+'" data-field="shot_end" value="'+escapeHtml(shot.shot_end)+'" /><span>s]</span></div><div class="shot-actions"><button class="btn small" data-action="toggle-shot" data-shot-id="'+shot.id+'">'+(shot.collapsed?'展开':'折叠')+'</button><button class="btn small" data-action="add-utt" data-shot-id="'+shot.id+'">+ 说话单元</button><button class="btn small" data-action="insert-shot-before" data-shot-id="'+shot.id+'">上方插入</button><button class="btn small" data-action="insert-shot-after" data-shot-id="'+shot.id+'">下方插入</button><button class="btn small danger" data-action="delete-shot" data-shot-id="'+shot.id+'">删除镜头</button></div></div>'+utts+'</article>'; }
+function renderUtt(shot, utt, idx) { var inv = valClass(utt.id); var si = state.shots.findIndex(function(s){return s.id===shot.id;}); var sel = isSelUtt(si,idx)?' selected':''; return '<section class="utterance-card '+inv+sel+'" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-shot-index="'+si+'" data-utt-index="'+idx+'" tabindex="0"><div class="utt-header"><div class="utt-title">说话单元 '+(idx+1)+'</div><div class="utt-actions"><button class="btn small icon" title="上移" data-action="move-utt-up" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">↑</button><button class="btn small icon" title="下移" data-action="move-utt-down" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">↓</button><button class="btn small" data-action="duplicate-utt" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">复制</button><button class="btn small danger" data-action="delete-utt" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">删除</button></div></div><div class="utt-grid"><div class="field-group utt-content-group"><label>说话内容</label><textarea class="content-input utt-input" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-field="content">'+escapeHtml(utt.content)+'</textarea></div><div class="utt-time-group"><div class="field-group"><label>开始时间</label><input class="field-input utt-input" type="number" step="0.01" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-field="start" value="'+escapeHtml(utt.start)+'" /></div><div class="field-group"><label>结束时间</label><input class="field-input utt-input" type="number" step="0.01" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-field="end" value="'+escapeHtml(utt.end)+'" /></div></div></div><div class="utt-hover-row">'+hoverSelect({label:'说话人',value:utt.speaker,options:SPEAKER_OPTIONS,field:'speaker',shotIndex:si,uttIndex:idx})+hoverSelect({label:'性别',value:utt.gender,options:GENDER_OPTIONS,field:'gender',shotIndex:si,uttIndex:idx})+hoverSelect({label:'人物可见',value:utt.visible,options:VISIBLE_OPTIONS,field:'visible',shotIndex:si,uttIndex:idx})+'</div></section>'; }
+function validate(showOk) { var items = []; var push = function(lv,msg,sid,uid){items.push({level:lv,msg:msg,shotId:sid,uttId:uid});}; if (!state.shots.length) { push('warn','当前没有镜头模块。请先解析或新增镜头。',null,null); return items; } state.shots.forEach(function(shot,sIdx){ var lb='镜头 '+(sIdx+1); var ss=Number(shot.shot_start); var se=Number(shot.shot_end); if(!Number.isFinite(ss)||!Number.isFinite(se)) push('error',lb+' 的镜头时间不是有效数字。',shot.id); else if(ss>=se) push('error',lb+' 的镜头开始时间必须小于结束时间。',shot.id); if(!shot.utterances.length) push('warn',lb+' 没有说话单元。',shot.id); shot.utterances.forEach(function(utt,uIdx){ var p=lb+' / 说话单元 '+(uIdx+1); var us=Number(utt.start); var ue=Number(utt.end); if(!String(utt.content??'').trim()) push('warn',p+' 的说话内容为空。',shot.id,utt.id); if(!Number.isFinite(us)||!Number.isFinite(ue)) push('error',p+' 的开始/结束时间不是有效数字。',shot.id,utt.id); else if(us>=ue) push('error',p+' 的开始时间必须小于结束时间。',shot.id,utt.id); else if(Number.isFinite(ss)&&Number.isFinite(se)&&(us<ss||ue>se)) push('warn',p+' 的说话单元时间超出镜头时间范围。',shot.id,utt.id); if(!/^speaker_\d+$/.test(String(utt.speaker))) push('error',p+' 的说话人格式应为 speaker_N。',shot.id,utt.id); if(!GENDER_OPTIONS.includes(String(utt.gender))) push('error',p+' 的性别应为 男/女。',shot.id,utt.id); if(!VISIBLE_OPTIONS.includes(String(utt.visible))) push('error',p+' 的是否人物可见应为 是/否/不确定。',shot.id,utt.id); }); }); if(showOk&&!items.length) push('ok','校验通过：未发现格式错误或明显提醒。'); return items; }
+function renderVal(showOk) { var items = showOk ? validate(true) : state.validation; if(!items.length||!state.shots.length) { els.validationBox.style.display='none'; return; } els.validationBox.style.display=''; els.validationBox.className='validation-box'; els.validationBox.innerHTML=items.map(function(item){return '<div class="validation-item '+item.level+'"><span class="status-dot '+(item.level==='error'?'err':item.level==='warn'?'warn':'')+'"></span>'+escapeHtml(item.msg)+'</div>';}).join(''); }
+function generateOutput() { renumber(); return state.shots.map(function(shot,idx){ var h='[镜头 '+(idx+1)+']['+fmtTime(shot.shot_start)+'s-'+fmtTime(shot.shot_end)+'s]'; var u=shot.utterances.map(function(utt){ return '{"说话内容": "'+String(utt.content??'').replaceAll('"','\\"')+'", "开始时间": '+fmtNum(utt.start)+', "结束时间": '+fmtNum(utt.end)+', "说话人": "'+utt.speaker+'", "性别": "'+utt.gender+'", "是否人物可见": "'+utt.visible+'"}'; }); return [h].concat(u).join('\n'); }).join('\n'); }
+function updateFromInput(target) { var field=target.dataset.field; var shotId=target.dataset.shotId; var uttId=target.dataset.uttId; if(!field||!shotId) return; var shot=findShot(shotId); if(!shot) return; if(uttId){ var utt=findUtt(shot,uttId); if(!utt) return; var v=target.value; if(['start','end'].includes(field)) v=parseNumber(v,''); if(field==='speaker') v=normSpeaker(v); if(field==='gender') v=normGender(v); if(field==='visible') v=normVisible(v); utt[field]=v; } else { shot[field]=parseNumber(target.value,''); resizeNeighbor(shot.id); } state.validation=validate(false); renderSummary(); renderVal(false); }
+function resizeNeighbor(shotId) { var idx=state.shots.findIndex(function(s){return s.id===shotId;}); if(idx<0) return; var shot=state.shots[idx]; var prev=idx>0?state.shots[idx-1]:null; var next=idx<state.shots.length-1?state.shots[idx+1]:null; var ss=Number(shot.shot_start); var se=Number(shot.shot_end); if(!Number.isFinite(ss)||!Number.isFinite(se)) return; if(prev){var pe=Number(prev.shot_end);if(Number.isFinite(pe)&&ss<pe) prev.shot_end=ss;} if(next){var ns=Number(next.shot_start);if(Number.isFinite(ns)&&se>ns) next.shot_start=se;} }
+function handleAction(action,shotId,uttId) { var shot=findShot(shotId); var si=state.shots.findIndex(function(s){return s.id===shotId;}); switch(action){ case 'toggle-shot': shot.collapsed=!shot.collapsed; break; case 'add-utt': var base=shot.utterances[shot.utterances.length-1]||null; shot.utterances.push(blankUtt(shot,base)); shot.collapsed=false; break; case 'insert-shot-before': var pa=si>0?state.shots[si-1]:null; state.shots.splice(si,0,blankShotBetween(pa,shot)); break; case 'insert-shot-after': var nb=si<state.shots.length-1?state.shots[si+1]:null; state.shots.splice(si+1,0,blankShotBetween(shot,nb)); break; case 'delete-shot': showDelDialog(si).then(function(m){if(m==='cancel') return; var ds=state.shots[si]; if(m==='up'&&si>0) state.shots[si-1].shot_end=ds.shot_end; else if(m==='down'&&si<state.shots.length-1) state.shots[si+1].shot_start=ds.shot_start; state.shots.splice(si,1); render(); }); return; case 'duplicate-utt': var ui=shot.utterances.findIndex(function(u){return u.id===uttId;}); var cp=Object.assign({},shot.utterances[ui],{id:uid('utt')}); shot.utterances.splice(ui+1,0,cp); break; case 'delete-utt': var ui2=shot.utterances.findIndex(function(u){return u.id===uttId;}); if(ui2>=0&&confirm('确认删除这个说话单元吗？')) shot.utterances.splice(ui2,1); break; case 'move-utt-up': var i=shot.utterances.findIndex(function(u){return u.id===uttId;}); if(i>0) {var tmp=shot.utterances[i-1]; shot.utterances[i-1]=shot.utterances[i]; shot.utterances[i]=tmp;} break; case 'move-utt-down': var i2=shot.utterances.findIndex(function(u){return u.id===uttId;}); if(i2>=0&&i2<shot.utterances.length-1) {var tmp2=shot.utterances[i2]; shot.utterances[i2]=shot.utterances[i2+1]; shot.utterances[i2+1]=tmp2;} break; default: return; } render(); }
+function showDelDialog(si) { return new Promise(function(resolve){ var ov=document.createElement('div'); ov.className='modal-overlay'; ov.innerHTML='<div class="modal-box"><div class="modal-title">删除镜头 '+(si+1)+'</div><p class="modal-desc">删除后，该镜头的时间可合并到相邻镜头：</p><div class="modal-actions">'+(si>0?'<button class="btn modal-btn" data-merge="up">⬆ 向上补时间<br><small>时间合并到镜头 '+si+'</small></button>':'')+(si<state.shots.length-1?'<button class="btn modal-btn" data-merge="down">⬇ 向下补时间<br><small>时间合并到镜头 '+(si+2)+'</small></button>':'')+'<button class="btn modal-btn modal-btn-muted" data-merge="none">直接删除（不补时间）</button><button class="btn ghost modal-btn-cancel" data-merge="cancel">取消</button></div></div>'; document.body.appendChild(ov); ov.addEventListener('click',function(e){var btn=e.target.closest('[data-merge]'); if(!btn) return; document.body.removeChild(ov); resolve(btn.dataset.merge);}); }); }
+function renderSummary() { var sc=state.shots.length; var uc=state.shots.reduce(function(s,sh){return s+sh.utterances.length;},0); var errs=state.validation.filter(function(v){return v.level==='error';}).length; var el=document.querySelector('.summary-bar'); if(el) el.innerHTML='已解析 <b>'+sc+'</b> 个镜头、<b>'+uc+'</b> 个说话单元。'+(errs?' <span class="danger-text"> 错误 '+errs+' 个</span>':''); }
+document.getElementById('btnLoadSample').addEventListener('click',function(){els.rawInput.value=SAMPLE_TEXT;});
+document.getElementById('btnReset').addEventListener('click',function(){if(!confirm('确认清空当前内容吗？')) return; state.shots=[]; selectedTarget=null; els.rawInput.value=''; render();});
+document.getElementById('btnPaste').addEventListener('click',async function(){try{els.rawInput.value=await navigator.clipboard.readText();}catch{alert('无法读取剪贴板，请手动粘贴。');}});
+document.getElementById('btnParse').addEventListener('click',function(){var shots=parseCaption(els.rawInput.value); if(!shots.length){alert('没有解析到镜头。请检查文本是否包含类似 [镜头 1][0.00s-0.76s] 的格式。');return;} state.shots=shots; selectedTarget=null; els.leftPaneTitle.textContent='原始机标 / 导出结果'; document.getElementById('btnCopyOutput').classList.add('hidden'); render();});
+document.getElementById('btnAddShot').addEventListener('click',function(){var last=state.shots[state.shots.length-1]||null; state.shots.push(blankShot(last)); render();});
+document.getElementById('btnValidate').addEventListener('click',function(){state.validation=validate(true); render(); renderVal(true);});
+document.getElementById('btnExport').addEventListener('click',function(){state.validation=validate(false); render(); var out=generateOutput(); els.rawInput.value=out; els.leftPaneTitle.textContent='已导出修改结果'; document.getElementById('btnCopyOutput').classList.remove('hidden');});
+document.getElementById('btnCopyOutput').addEventListener('click',async function(){var text=els.rawInput.value||''; if(!text.trim()) els.rawInput.value=generateOutput(); try{await navigator.clipboard.writeText(els.rawInput.value); alert('已复制修改后的机标文本。');}catch{els.rawInput.select(); document.execCommand('copy'); alert('已复制修改后的机标文本。');}});
+els.editor.addEventListener('input',function(e){if(e.target.matches('.shot-input, .utt-input')) updateFromInput(e.target);});
+els.editor.addEventListener('change',function(e){if(e.target.matches('.shot-input, .utt-input')) updateFromInput(e.target);});
+els.editor.addEventListener('click',function(e){var btn=e.target.closest('button[data-action]'); if(!btn) return; handleAction(btn.dataset.action,btn.dataset.shotId,btn.dataset.uttId);});
+els.editor.addEventListener('contextmenu',function(e){var card=e.target.closest('.utterance-card'); if(!card) return; e.preventDefault(); showContextMenu(e.clientX,e.clientY,card.dataset.shotId,card.dataset.uttId);});
+document.addEventListener('click',function(e){if(!e.target.closest('.context-menu')) closeContextMenu();});
+document.addEventListener('click',function(e){var sc=e.target.closest('.shot-card'); var uc=e.target.closest('.utterance-card'); if(e.target.closest('input')||e.target.closest('textarea')||e.target.closest('button')||e.target.closest('.hover-menu')||e.target.closest('.field-chip')) return; if(uc){setSel({type:'utterance',shotIndex:Number(uc.dataset.shotIndex),uttIndex:Number(uc.dataset.uttIndex)}); return;} if(sc) setSel({type:'shot',shotIndex:Number(sc.dataset.shotIndex)});});
+document.addEventListener('click',function(e){var btn=e.target.closest("[data-action='set-field']"); if(!btn) return; e.preventDefault(); e.stopPropagation(); var si=Number(btn.dataset.shotIndex); var ui=Number(btn.dataset.uttIndex); var utt=state.shots?.[si]?.utterances?.[ui]; if(!utt) return; utt[btn.dataset.field]=btn.dataset.value; renderEditor();});
+document.addEventListener('keydown',function(e){if(e.key!=='Delete'&&e.key!=='Backspace') return; var act=document.activeElement; var typing=act&&['INPUT','TEXTAREA'].includes(act.tagName); if(typing) return; if(!selectedTarget) return; e.preventDefault(); if(selectedTarget.type==='shot'){var si=selectedTarget.shotIndex; var shot=state.shots[si]; if(!shot) return; showDelDialog(si).then(function(m){if(m==='cancel') return; var ds=state.shots[si]; if(m==='up'&&si>0) state.shots[si-1].shot_end=ds.shot_end; else if(m==='down'&&si<state.shots.length-1) state.shots[si+1].shot_start=ds.shot_start; state.shots.splice(si,1); selectedTarget=null; render();}); return;} if(selectedTarget.type==='utterance'){var s=state.shots[selectedTarget.shotIndex]; if(!s) return; if(!confirm('确认删除说话单元 '+(selectedTarget.uttIndex+1)+' 吗？')) return; s.utterances.splice(selectedTarget.uttIndex,1); selectedTarget=null; render();}});
+function showContextMenu(x,y,sid,uid){closeContextMenu(); var tpl=document.getElementById('contextMenuTemplate'); var menu=tpl.content.firstElementChild.cloneNode(true); menu.style.left=x+'px'; menu.style.top=y+'px'; menu.dataset.shotId=sid; menu.dataset.uttId=uid; menu.addEventListener('click',function(e){var act=e.target.dataset.contextAction; if(!act) return; handleAction(act==='duplicate'?'duplicate-utt':'delete-utt',sid,uid); closeContextMenu();}); document.body.appendChild(menu);}
+function closeContextMenu(){document.querySelectorAll('.context-menu').forEach(function(m){m.remove();});}
+render();
+  </script>
+</body>
+</html>
