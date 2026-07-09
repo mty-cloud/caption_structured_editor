@@ -15,13 +15,10 @@
 
 复制这个链接分享给别人即可使用，手机也能打开。
 
-### 方式二：下载单文件（存到本地用）
+### 方式二：下载到本地使用
 
-1. 打开 [index_standalone.html](https://raw.githubusercontent.com/mty-cloud/caption_structured_editor/main/index_standalone.html)
-2. 右键 → 另存为 → 保存到电脑上
-3. **双击打开**即可使用，只有一个文件
-
-> 或者从 [GitHub 仓库](https://github.com/mty-cloud/caption_structured_editor) 下载 `index_standalone.html`
+1. 打开 `index.html`，或者从 [GitHub 仓库](https://github.com/mty-cloud/caption_structured_editor) 下载
+2. **双击打开**即可使用，只有一个文件
 
 ### 方式三：完整项目
 
@@ -68,7 +65,7 @@ cd caption_structured_editor
 ## 📁 项目结构
 
 ```
-caption_structured_editor/
+caption_structured_editor_mvp/
 ├── index.html              ← 主页面（双击打开，已内嵌全部 CSS+JS）
 ├── README.md               ← 使用说明
 ├── LICENSE                 ← MIT 许可证
@@ -76,7 +73,8 @@ caption_structured_editor/
 ├── .github/workflows/      ← GitHub Actions 自动部署
 │   └── deploy-pages.yml
 └── docs/                   ← 文档目录
-    └── sample_input.txt        ← 示例输入文本
+    ├── sample_input.txt        ← 示例输入文本
+    └── CLAUDE_CODE_TASK.md     ← Claude 开发任务说明
 ```
 
 ---
