@@ -298,13 +298,6 @@ const RISK_CONFIG = {
     { field: 'speaker', forbiddenValues: [''],       label: '说话人',   level: 'warn',  msg: '说话人为空，建议填写' },
   ]
 };
-function loadRiskConfig() {
-  try { var saved = JSON.parse(localStorage.getItem('risk_config')); if(saved && saved.rules) Object.assign(RISK_CONFIG, saved); } catch(e) {}
-}
-function saveRiskConfig() {
-  localStorage.setItem('risk_config', JSON.stringify({rules: RISK_CONFIG.rules}));
-}
-loadRiskConfig();
 const state = { shots: [], contextTarget: null, validation: [] };
 let selectedTarget = null;
 const els = { rawInput: document.getElementById('rawInput'), editor: document.getElementById('editor'), validationBox: document.getElementById('validationBox'), leftPaneTitle: document.getElementById('leftPaneTitle') };
@@ -367,7 +360,6 @@ function renderUtt(shot, utt, idx) { var inv = valClass(utt.id); var si = state.
 function validate(showOk) { var items = []; var push = function(lv,msg,sid,uid){items.push({level:lv,msg:msg,shotId:sid,uttId:uid});}; if (!state.shots.length) { push('warn','当前没有镜头模块。请先解析或新增镜头。',null,null); return items; } state.shots.forEach(function(shot,sIdx){ var lb='镜头 '+(sIdx+1); var ss=Number(shot.shot_start); var se=Number(shot.shot_end); if(!Number.isFinite(ss)||!Number.isFinite(se)) push('error',lb+' 的镜头时间不是有效数字。',shot.id); else if(ss>=se) push('error',lb+' 的镜头开始时间必须小于结束时间。',shot.id); if(!shot.utterances.length) push('warn',lb+' 没有说话单元。',shot.id); shot.utterances.forEach(function(utt,uIdx){ var p=lb+' / 说话单元 '+(uIdx+1); var us=Number(utt.start); var ue=Number(utt.end); if(!String(utt.content??'').trim()) push('warn',p+' 的说话内容为空。',shot.id,utt.id); if(!Number.isFinite(us)||!Number.isFinite(ue)) push('error',p+' 的开始/结束时间不是有效数字。',shot.id,utt.id); else if(us>=ue) push('error',p+' 的开始时间必须小于结束时间。',shot.id,utt.id); else if(Number.isFinite(ss)&&Number.isFinite(se)&&(us<ss||ue>se)) push('warn',p+' 的说话单元时间超出镜头时间范围。',shot.id,utt.id); if(!/^speaker_\d+$/.test(String(utt.speaker))) push('error',p+' 的说话人格式应为 speaker_N。',shot.id,utt.id); if(!GENDER_OPTIONS.includes(String(utt.gender))) push('error',p+' 的性别应为 男/女。',shot.id,utt.id); if(!VISIBLE_OPTIONS.includes(String(utt.visible))) push('error',p+' 的是否人物可见应为 是/否/不确定。',shot.id,utt.id); }); }); if(showOk&&!items.length) push('ok','校验通过：未发现格式错误或明显提醒。'); return items; }
 function renderVal(showOk) { var items = showOk ? validate(true) : state.validation; if(!items.length||!state.shots.length) { els.validationBox.style.display='none'; return; } els.validationBox.style.display=''; els.validationBox.className='validation-box'; els.validationBox.innerHTML=items.map(function(item){return '<div class="validation-item '+item.level+'"><span class="status-dot '+(item.level==='error'?'err':item.level==='warn'?'warn':'')+'"></span>'+escapeHtml(item.msg)+'</div>';}).join(''); }
 function checkRisk() {
-  if (!RISK_CONFIG.enabled) return [];
   var items = [];
   state.shots.forEach(function(shot, si){
     shot.utterances.forEach(function(utt, ui){
@@ -425,7 +417,7 @@ function saveSettings() {
   var pid = Number(document.getElementById('settingProjectId').value) || 4296;
   localStorage.setItem('ls_base', base);
   localStorage.setItem('ls_project_id', String(pid));
-  saveRiskConfig();
+
 }
 
 async function lsFetch(path, opts) {
