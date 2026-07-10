@@ -274,6 +274,18 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
         <label>API Token（固定预设）</label>
         <input class="readonly-field" type="text" value="f1189e9eafd25393abaf1eac483290f3b62fb204" readonly />
       </div>
+      <div class="settings-field" style="border-top:1px solid #e5e7eb;padding-top:14px;margin-top:14px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
+          <input id="settingRiskEnabled" type="checkbox" checked />
+          提交前风险检查
+        </label>
+        <div class="settings-tip">扫描说话单元中「不确定」等风险字段，弹窗确认后再提交。</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-top:6px;">
+          <input id="settingBlockOnRisk" type="checkbox" checked />
+          有 level=block 项时阻止提交
+        </label>
+        <div class="settings-tip">取消勾选后即使有高风险项也只警告不阻止。</div>
+      </div>
       <div class="modal-actions">
         <button id="btnSaveSettings" class="btn modal-btn" style="text-align:center;background:#2563eb;color:#fff;">保存设置</button>
         <button id="btnCloseSettings" class="btn ghost modal-btn-cancel" style="text-align:center;">取消</button>
@@ -291,6 +303,22 @@ const SAMPLE_TEXT = '[镜头 1][0.00s-0.76s]\n{"说话内容": "疼", "开始时
 const SPEAKER_OPTIONS = Array.from({ length: 8 }, (_, i) => 'speaker_' + i);
 const GENDER_OPTIONS = ['男', '女'];
 const VISIBLE_OPTIONS = ['是', '否', '不确定'];
+const RISK_CONFIG = {
+  enabled: true,
+  blockOnRisk: true,
+  rules: [
+    { field: 'visible', forbiddenValues: ['不确定'], label: '人物可见', level: 'block', msg: '存在「不确定」的人物可见，请确认为「是」或「否」' },
+    { field: 'gender',  forbiddenValues: [''],       label: '性别',     level: 'warn',  msg: '性别为空，建议填写' },
+    { field: 'speaker', forbiddenValues: [''],       label: '说话人',   level: 'warn',  msg: '说话人为空，建议填写' },
+  ]
+};
+function loadRiskConfig() {
+  try { var saved = JSON.parse(localStorage.getItem('risk_config')); if(saved) Object.assign(RISK_CONFIG, saved); } catch(e) {}
+}
+function saveRiskConfig() {
+  localStorage.setItem('risk_config', JSON.stringify({enabled: RISK_CONFIG.enabled, blockOnRisk: RISK_CONFIG.blockOnRisk}));
+}
+loadRiskConfig();
 const state = { shots: [], contextTarget: null, validation: [] };
 let selectedTarget = null;
 const els = { rawInput: document.getElementById('rawInput'), editor: document.getElementById('editor'), validationBox: document.getElementById('validationBox'), leftPaneTitle: document.getElementById('leftPaneTitle') };
@@ -352,6 +380,25 @@ function renderShot(shot, si) { var inv = valClass(shot.id); var utts = shot.col
 function renderUtt(shot, utt, idx) { var inv = valClass(utt.id); var si = state.shots.findIndex(function(s){return s.id===shot.id;}); var sel = isSelUtt(si,idx)?' selected':''; return '<section class="utterance-card '+inv+sel+'" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-shot-index="'+si+'" data-utt-index="'+idx+'" tabindex="0"><div class="utt-header"><div class="utt-title">说话单元 '+(idx+1)+'</div><div class="utt-actions"><button class="btn small icon" title="上移" data-action="move-utt-up" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">↑</button><button class="btn small icon" title="下移" data-action="move-utt-down" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">↓</button><button class="btn small" data-action="duplicate-utt" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">复制</button><button class="btn small danger" data-action="delete-utt" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'">删除</button></div></div><div class="utt-grid"><div class="field-group utt-content-group"><label>说话内容</label><textarea class="content-input utt-input" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-field="content">'+escapeHtml(utt.content)+'</textarea></div><div class="utt-time-group"><div class="field-group"><label>开始时间</label><input class="field-input utt-input" type="number" step="0.01" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-field="start" value="'+escapeHtml(utt.start)+'" /></div><div class="field-group"><label>结束时间</label><input class="field-input utt-input" type="number" step="0.01" data-shot-id="'+shot.id+'" data-utt-id="'+utt.id+'" data-field="end" value="'+escapeHtml(utt.end)+'" /></div></div></div><div class="utt-hover-row">'+hoverSelect({label:'说话人',value:utt.speaker,options:SPEAKER_OPTIONS,field:'speaker',shotIndex:si,uttIndex:idx})+hoverSelect({label:'性别',value:utt.gender,options:GENDER_OPTIONS,field:'gender',shotIndex:si,uttIndex:idx})+hoverSelect({label:'人物可见',value:utt.visible,options:VISIBLE_OPTIONS,field:'visible',shotIndex:si,uttIndex:idx})+'</div></section>'; }
 function validate(showOk) { var items = []; var push = function(lv,msg,sid,uid){items.push({level:lv,msg:msg,shotId:sid,uttId:uid});}; if (!state.shots.length) { push('warn','当前没有镜头模块。请先解析或新增镜头。',null,null); return items; } state.shots.forEach(function(shot,sIdx){ var lb='镜头 '+(sIdx+1); var ss=Number(shot.shot_start); var se=Number(shot.shot_end); if(!Number.isFinite(ss)||!Number.isFinite(se)) push('error',lb+' 的镜头时间不是有效数字。',shot.id); else if(ss>=se) push('error',lb+' 的镜头开始时间必须小于结束时间。',shot.id); if(!shot.utterances.length) push('warn',lb+' 没有说话单元。',shot.id); shot.utterances.forEach(function(utt,uIdx){ var p=lb+' / 说话单元 '+(uIdx+1); var us=Number(utt.start); var ue=Number(utt.end); if(!String(utt.content??'').trim()) push('warn',p+' 的说话内容为空。',shot.id,utt.id); if(!Number.isFinite(us)||!Number.isFinite(ue)) push('error',p+' 的开始/结束时间不是有效数字。',shot.id,utt.id); else if(us>=ue) push('error',p+' 的开始时间必须小于结束时间。',shot.id,utt.id); else if(Number.isFinite(ss)&&Number.isFinite(se)&&(us<ss||ue>se)) push('warn',p+' 的说话单元时间超出镜头时间范围。',shot.id,utt.id); if(!/^speaker_\d+$/.test(String(utt.speaker))) push('error',p+' 的说话人格式应为 speaker_N。',shot.id,utt.id); if(!GENDER_OPTIONS.includes(String(utt.gender))) push('error',p+' 的性别应为 男/女。',shot.id,utt.id); if(!VISIBLE_OPTIONS.includes(String(utt.visible))) push('error',p+' 的是否人物可见应为 是/否/不确定。',shot.id,utt.id); }); }); if(showOk&&!items.length) push('ok','校验通过：未发现格式错误或明显提醒。'); return items; }
 function renderVal(showOk) { var items = showOk ? validate(true) : state.validation; if(!items.length||!state.shots.length) { els.validationBox.style.display='none'; return; } els.validationBox.style.display=''; els.validationBox.className='validation-box'; els.validationBox.innerHTML=items.map(function(item){return '<div class="validation-item '+item.level+'"><span class="status-dot '+(item.level==='error'?'err':item.level==='warn'?'warn':'')+'"></span>'+escapeHtml(item.msg)+'</div>';}).join(''); }
+function checkRisk() {
+  if (!RISK_CONFIG.enabled) return [];
+  var items = [];
+  state.shots.forEach(function(shot, si){
+    shot.utterances.forEach(function(utt, ui){
+      RISK_CONFIG.rules.forEach(function(rule){
+        var val = String(utt[rule.field] ?? '');
+        if (rule.forbiddenValues.indexOf(val) >= 0) {
+          items.push({
+            level: rule.level === 'block' ? 'error' : 'warn',
+            msg: '镜头'+(si+1)+'·说话单元'+(ui+1)+'：'+rule.label+'为「'+val+'」'+(rule.level==='block'?'，请修改后再提交':'，建议确认'),
+            shotId: shot.id, uttId: utt.id
+          });
+        }
+      });
+    });
+  });
+  return items;
+}
 function generateOutput() { renumber(); return state.shots.map(function(shot,idx){ var h='[镜头 '+(idx+1)+']['+fmtTime(shot.shot_start)+'s-'+fmtTime(shot.shot_end)+'s]'; var u=shot.utterances.map(function(utt){ return '{"说话内容": "'+String(utt.content??'').replaceAll('"','\\"')+'", "开始时间": '+fmtNum(utt.start)+', "结束时间": '+fmtNum(utt.end)+', "说话人": "'+utt.speaker+'", "性别": "'+utt.gender+'", "是否人物可见": "'+utt.visible+'"}'; }); return [h].concat(u).join('\n'); }).join('\n'); }
 function updateFromInput(target) { var field=target.dataset.field; var shotId=target.dataset.shotId; var uttId=target.dataset.uttId; if(!field||!shotId) return; var shot=findShot(shotId); if(!shot) return; if(uttId){ var utt=findUtt(shot,uttId); if(!utt) return; var v=target.value; if(['start','end'].includes(field)) v=parseNumber(v,''); if(field==='speaker') v=normSpeaker(v); if(field==='gender') v=normGender(v); if(field==='visible') v=normVisible(v); utt[field]=v; } else { shot[field]=parseNumber(target.value,''); resizeNeighbor(shot.id); } state.validation=validate(false); renderSummary(); renderVal(false); }
 function resizeNeighbor(shotId) { var idx=state.shots.findIndex(function(s){return s.id===shotId;}); if(idx<0) return; var shot=state.shots[idx]; var prev=idx>0?state.shots[idx-1]:null; var next=idx<state.shots.length-1?state.shots[idx+1]:null; var ss=Number(shot.shot_start); var se=Number(shot.shot_end); if(!Number.isFinite(ss)||!Number.isFinite(se)) return; if(prev){var pe=Number(prev.shot_end);if(Number.isFinite(pe)&&ss<pe) prev.shot_end=ss;} if(next){var ns=Number(next.shot_start);if(Number.isFinite(ns)&&se>ns) next.shot_start=se;} }
@@ -392,6 +439,9 @@ function saveSettings() {
   var pid = Number(document.getElementById('settingProjectId').value) || 4296;
   localStorage.setItem('ls_base', base);
   localStorage.setItem('ls_project_id', String(pid));
+  RISK_CONFIG.enabled = document.getElementById('settingRiskEnabled').checked;
+  RISK_CONFIG.blockOnRisk = document.getElementById('settingBlockOnRisk').checked;
+  saveRiskConfig();
 }
 
 async function lsFetch(path, opts) {
@@ -446,6 +496,17 @@ async function submitAndNext(discard) {
   if (!discard && !state.shots.length && !els.rawInput.value.trim()) {
     alert('没有可提交的内容。请先修改或选择"丢弃此条"。');
     return;
+  }
+  if (!discard && state.shots.length) {
+    var risks = checkRisk();
+    var blocks = risks.filter(function(r){return r.level==='error';});
+    var warns = risks.filter(function(r){return r.level==='warn';});
+    if (blocks.length) {
+      var msgs = blocks.map(function(r){return '  ⛔ '+r.msg;}).join('\n');
+      if (!confirm('⚠️ 风险检查未通过（共 '+blocks.length+' 项），提交后可能被判定为无效：\n\n'+msgs+'\n\n点击「确定」继续提交，点击「取消」返回修改')) return;
+    } else if (warns.length && RISK_CONFIG.blockOnRisk) {
+      if (!confirm('⚠️ 发现以下建议项（共 '+warns.length+' 项），是否确认提交？\n\n'+warns.map(function(r){return '  ⚠️ '+r.msg;}).join('\n')+'\n\n点击「确定」继续提交')) return;
+    }
   }
   setSubmitStatus('提交中...', 'loading');
   document.getElementById('btnSubmit').disabled = true;
@@ -539,6 +600,8 @@ async function loadNextTask() {
 function showSettings() {
   document.getElementById('settingLSBase').value = getLSBase();
   document.getElementById('settingProjectId').value = getProjectId();
+  document.getElementById('settingRiskEnabled').checked = RISK_CONFIG.enabled;
+  document.getElementById('settingBlockOnRisk').checked = RISK_CONFIG.blockOnRisk;
   document.getElementById('settingsOverlay').classList.remove('hidden');
 }
 function hideSettings() {
