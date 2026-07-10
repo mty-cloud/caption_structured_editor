@@ -274,18 +274,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
         <label>API Token（固定预设）</label>
         <input class="readonly-field" type="text" value="f1189e9eafd25393abaf1eac483290f3b62fb204" readonly />
       </div>
-      <div class="settings-field" style="border-top:1px solid #e5e7eb;padding-top:14px;margin-top:14px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
-          <input id="settingRiskEnabled" type="checkbox" checked />
-          提交前风险检查
-        </label>
-        <div class="settings-tip">扫描说话单元中「不确定」等风险字段，弹窗确认后再提交。</div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-top:6px;">
-          <input id="settingBlockOnRisk" type="checkbox" checked />
-          有 level=block 项时阻止提交
-        </label>
-        <div class="settings-tip">取消勾选后即使有高风险项也只警告不阻止。</div>
-      </div>
       <div class="modal-actions">
         <button id="btnSaveSettings" class="btn modal-btn" style="text-align:center;background:#2563eb;color:#fff;">保存设置</button>
         <button id="btnCloseSettings" class="btn ghost modal-btn-cancel" style="text-align:center;">取消</button>
@@ -304,8 +292,6 @@ const SPEAKER_OPTIONS = Array.from({ length: 8 }, (_, i) => 'speaker_' + i);
 const GENDER_OPTIONS = ['男', '女'];
 const VISIBLE_OPTIONS = ['是', '否', '不确定'];
 const RISK_CONFIG = {
-  enabled: true,
-  blockOnRisk: true,
   rules: [
     { field: 'visible', forbiddenValues: ['不确定'], label: '人物可见', level: 'block', msg: '存在「不确定」的人物可见，请确认为「是」或「否」' },
     { field: 'gender',  forbiddenValues: [''],       label: '性别',     level: 'warn',  msg: '性别为空，建议填写' },
@@ -313,10 +299,10 @@ const RISK_CONFIG = {
   ]
 };
 function loadRiskConfig() {
-  try { var saved = JSON.parse(localStorage.getItem('risk_config')); if(saved) Object.assign(RISK_CONFIG, saved); } catch(e) {}
+  try { var saved = JSON.parse(localStorage.getItem('risk_config')); if(saved && saved.rules) Object.assign(RISK_CONFIG, saved); } catch(e) {}
 }
 function saveRiskConfig() {
-  localStorage.setItem('risk_config', JSON.stringify({enabled: RISK_CONFIG.enabled, blockOnRisk: RISK_CONFIG.blockOnRisk}));
+  localStorage.setItem('risk_config', JSON.stringify({rules: RISK_CONFIG.rules}));
 }
 loadRiskConfig();
 const state = { shots: [], contextTarget: null, validation: [] };
@@ -439,8 +425,6 @@ function saveSettings() {
   var pid = Number(document.getElementById('settingProjectId').value) || 4296;
   localStorage.setItem('ls_base', base);
   localStorage.setItem('ls_project_id', String(pid));
-  RISK_CONFIG.enabled = document.getElementById('settingRiskEnabled').checked;
-  RISK_CONFIG.blockOnRisk = document.getElementById('settingBlockOnRisk').checked;
   saveRiskConfig();
 }
 
@@ -503,8 +487,13 @@ async function submitAndNext(discard) {
     var warns = risks.filter(function(r){return r.level==='warn';});
     if (blocks.length) {
       var msgs = blocks.map(function(r){return '  ⛔ '+r.msg;}).join('\n');
-      if (!confirm('⚠️ 风险检查未通过（共 '+blocks.length+' 项），提交后可能被判定为无效：\n\n'+msgs+'\n\n点击「确定」继续提交，点击「取消」返回修改')) return;
-    } else if (warns.length && RISK_CONFIG.blockOnRisk) {
+      alert('⚠️ 风险检查未通过（共 '+blocks.length+' 项），禁止提交：\n\n'+msgs);
+      setSubmitStatus('❌ 风险检查未通过，请修改', 'error');
+      document.getElementById('btnSubmit').disabled = false;
+      document.getElementById('btnDiscard').disabled = false;
+      return;
+    }
+    if (warns.length) {
       if (!confirm('⚠️ 发现以下建议项（共 '+warns.length+' 项），是否确认提交？\n\n'+warns.map(function(r){return '  ⚠️ '+r.msg;}).join('\n')+'\n\n点击「确定」继续提交')) return;
     }
   }
@@ -600,8 +589,6 @@ async function loadNextTask() {
 function showSettings() {
   document.getElementById('settingLSBase').value = getLSBase();
   document.getElementById('settingProjectId').value = getProjectId();
-  document.getElementById('settingRiskEnabled').checked = RISK_CONFIG.enabled;
-  document.getElementById('settingBlockOnRisk').checked = RISK_CONFIG.blockOnRisk;
   document.getElementById('settingsOverlay').classList.remove('hidden');
 }
 function hideSettings() {
