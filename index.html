@@ -294,7 +294,7 @@ const VISIBLE_OPTIONS = ['是', '否', '不确定'];
 const RISK_CONFIG = {
   rules: [
     { field: 'visible', forbiddenValues: ['不确定'], label: '人物可见', level: 'block', msg: '存在「不确定」的人物可见，请确认为「是」或「否」' },
-    { field: 'gender',  forbiddenValues: [''],       label: '性别',     level: 'warn',  msg: '性别为空，建议填写' },
+    { field: 'gender',  forbiddenValues: ['', '不确定'], label: '性别',     level: 'block', msg: '性别为「不确定」或为空，请确认为「男」或「女」' },
     { field: 'speaker', forbiddenValues: [''],       label: '说话人',   level: 'warn',  msg: '说话人为空，建议填写' },
   ]
 };
