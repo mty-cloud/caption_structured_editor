@@ -472,7 +472,7 @@ function updateDiscardPrompt(memo) {
     banner.classList.add('hidden');
   }
 }
-document.getElementById('btnLoadSample').addEventListener('click',function(){els.rawInput.value=SAMPLE_TEXT;});
+document.getElementById('btnLoadSample').addEventListener('click',function(){els.rawInput.value=SAMPLE_TEXT; document.getElementById('taskId').textContent='示例任务'; document.getElementById('memoText').textContent='镜头之间有黑幕和渐变'; document.getElementById('taskBar').classList.remove('hidden'); updateDiscardPrompt('镜头之间有黑幕和渐变');});
 document.getElementById('btnReset').addEventListener('click',function(){if(!confirm('确认清空当前内容吗？')) return; state.shots=[]; selectedTarget=null; els.rawInput.value=''; document.getElementById('discardPrompt').classList.add('hidden');document.getElementById('discardBanner').classList.add('hidden'); render();});
 document.getElementById('btnPaste').addEventListener('click',async function(){try{els.rawInput.value=await navigator.clipboard.readText();}catch{alert('无法读取剪贴板，请手动粘贴。');}});
 document.getElementById('btnParse').addEventListener('click',function(){var shots=parseCaption(els.rawInput.value); if(!shots.length){alert('没有解析到镜头。请检查文本是否包含类似 [镜头 1][0.00s-0.76s] 的格式。');return;} state.shots=shots; selectedTarget=null; els.leftPaneTitle.textContent='原始机标 / 导出结果'; document.getElementById('btnCopyOutput').classList.add('hidden'); render();});
