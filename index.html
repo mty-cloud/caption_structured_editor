@@ -307,7 +307,7 @@ function parseNumber(v, fb) { if (v === null || v === undefined || v === '') ret
 function fmtTime(v) { var n = Number(v); return Number.isFinite(n) ? n.toFixed(2) : '0.00'; }
 function fmtNum(v) { var n = Number(v); return Number.isFinite(n) ? String(Math.round(n * 1000) / 1000) : '0'; }
 function normVisible(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['是','否','不确定'].includes(v) ? v : v || '不确定'; }
-function normGender(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['男','女'].includes(v) ? v : v || '男'; }
+function normGender(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['男','女'].includes(v) ? v : '不确定'; }
 function normSpeaker(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return /^speaker_\d+$/.test(v) ? v : /^\d+$/.test(v) ? 'speaker_' + v : v || 'speaker_0'; }
 function extractField(raw, key, opts) { opts = opts || {}; var text = String(raw || ''); var pats = [new RegExp('"' + key + '"\\s*[:：]\\s*"([^"]*)"', 'i'), new RegExp("'" + key + "'\\s*[:：]\\s*'([^']*)'", 'i'), new RegExp('"' + key + '"\\s*[:：]\\s*([^,，}]+)', 'i'), new RegExp(key + '\\s*[:：]\\s*([^,，}]+)', 'i')]; for (var pi = 0; pi < pats.length; pi++) { var m = text.match(pats[pi]); if (m) { var val = m[1].trim(); return opts.number ? parseNumber(val, opts.fallback) : val.replace(/^"|"$/g, ''); } } return opts.fallback !== undefined ? opts.fallback : ''; }
 function parseUtt(t) { return { id: uid('utt'), content: extractField(t, '说话内容'), start: extractField(t, '开始时间', {number:true}), end: extractField(t, '结束时间', {number:true}), speaker: normSpeaker(extractField(t, '说话人', {fallback:'speaker_0'})), gender: normGender(extractField(t, '性别', {fallback:'男'})), visible: normVisible(extractField(t, '是否人物可见', {fallback:'不确定'})) }; }
@@ -340,7 +340,7 @@ function isSelUtt(si, ui) { return selectedTarget && selectedTarget.type==='utte
 function optHtml(opts, sel) { var list = []; for (var i = 0; i < opts.length; i++) { if (list.indexOf(opts[i]) < 0) list.push(opts[i]); } if (list.indexOf(sel) < 0) list.push(sel); return list.map(function(v){return '<option value="'+escapeHtml(v)+'"'+(v===sel?' selected':'')+'>'+escapeHtml(v)+'</option>';}).join(''); }
 function hoverSelect(opts) { var h = '<div class="hover-select"><span class="field-label">'+escapeHtml(opts.label)+'</span><span class="field-chip">'+escapeHtml(String(opts.value||'未填'))+'</span><div class="hover-menu">'; for (var i = 0; i < opts.options.length; i++) { var o = opts.options[i]; h += '<button class="hover-option'+(String(o)===String(opts.value)?' active':'')+'" data-action="set-field" data-shot-index="'+opts.shotIndex+'" data-utt-index="'+opts.uttIndex+'" data-field="'+opts.field+'" data-value="'+escapeHtml(String(o))+'">'+escapeHtml(String(o))+'</button>'; } return h + '</div></div>'; }
 function valClass(eid) { var items = state.validation.filter(function(v){return v.shotId===eid||v.uttId===eid;}); if (items.some(function(i){return i.level==='error';})) return 'invalid'; if (items.some(function(i){return i.level==='warn';})) return 'warning'; return ''; }
-function render() { renumber(); state.validation = validate(false); rebuildSpeakerOptions(); renderEditor(); renderVal(false); }
+function render() { renumber(); state.validation = validate(false).concat(checkRisk()); rebuildSpeakerOptions(); renderEditor(); renderVal(false); }
 function rebuildSpeakerOptions() {
   var maxNum = 0;
   state.shots.forEach(function(s){
