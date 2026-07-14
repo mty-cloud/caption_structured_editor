@@ -287,13 +287,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
     </div>
   </template>
   <script>
-const SAMPLE_TEXT = '[镜头 1][0.00s-0.76s]\n{"说话内容": "疼", "开始时间": 0.02, "结束时间": 0.52, "说话人": "speaker_0", "性别": "男", "是否人物可见": "不确定"}\n[镜头 2][0.80s-3.00s]\n{"说话内容": "，疼啊", "开始时间": 0.8, "结束时间": 3.44, "说话人": "speaker_0", "性别": "男", "是否人物可见": 是}\n[镜头 3][3.04s-5.12s]\n[镜头 4][5.16s-6.20s]\n[镜头 5][6.24s-7.68s]\n[镜头 6][7.72s-7.96s]\n{"说话内容": "我找", "开始时间": 7.72, "结束时间": 7.98, "说话人": "speaker_0", "性别": "男", "是否人物可见": 否}';
+const SAMPLE_TEXT = '[镜头 1][0.00s-0.76s]\n{"说话内容": "疼", "开始时间": 0.02, "结束时间": 0.52, "说话人": "speaker_0", "性别": "男", "是否人物可见": "否"}\n[镜头 2][0.80s-3.00s]\n{"说话内容": "，疼啊", "开始时间": 0.8, "结束时间": 3.44, "说话人": "speaker_0", "性别": "男", "是否人物可见": 是}\n[镜头 3][3.04s-5.12s]\n[镜头 4][5.16s-6.20s]\n[镜头 5][6.24s-7.68s]\n[镜头 6][7.72s-7.96s]\n{"说话内容": "我找", "开始时间": 7.72, "结束时间": 7.98, "说话人": "speaker_0", "性别": "男", "是否人物可见": 否}';
 const SPEAKER_OPTIONS = Array.from({ length: 8 }, (_, i) => 'speaker_' + i);
 const GENDER_OPTIONS = ['男', '女'];
-const VISIBLE_OPTIONS = ['是', '否', '不确定'];
+const VISIBLE_OPTIONS = ['是', '否'];
 const RISK_CONFIG = {
   rules: [
-    { field: 'visible', forbiddenValues: ['不确定'], label: '人物可见', level: 'block', msg: '存在「不确定」的人物可见，请确认为「是」或「否」' },
     { field: 'gender',  forbiddenValues: ['', '不确定'], label: '性别',     level: 'block', msg: '性别为「不确定」或为空，请确认为「男」或「女」' },
     { field: 'speaker', forbiddenValues: [''],       label: '说话人',   level: 'warn',  msg: '说话人为空，建议填写' },
   ]
@@ -306,11 +305,11 @@ function escapeHtml(v) { return String(v ?? '').replaceAll('&', '&amp;').replace
 function parseNumber(v, fb) { if (v === null || v === undefined || v === '') return fb; var n = Number(String(v).replace(/[，,]/g, '').trim()); return Number.isFinite(n) ? n : fb; }
 function fmtTime(v) { var n = Number(v); return Number.isFinite(n) ? n.toFixed(2) : '0.00'; }
 function fmtNum(v) { var n = Number(v); return Number.isFinite(n) ? String(Math.round(n * 1000) / 1000) : '0'; }
-function normVisible(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['是','否','不确定'].includes(v) ? v : v || '不确定'; }
+function normVisible(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['是','否'].includes(v) ? v : '否'; }
 function normGender(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return ['男','女'].includes(v) ? v : '不确定'; }
 function normSpeaker(v) { v = String(v ?? '').replace(/["'，,}\s]/g, '').trim(); return /^speaker_\d+$/.test(v) ? v : /^\d+$/.test(v) ? 'speaker_' + v : v || 'speaker_0'; }
 function extractField(raw, key, opts) { opts = opts || {}; var text = String(raw || ''); var pats = [new RegExp('"' + key + '"\\s*[:：]\\s*"([^"]*)"', 'i'), new RegExp("'" + key + "'\\s*[:：]\\s*'([^']*)'", 'i'), new RegExp('"' + key + '"\\s*[:：]\\s*([^,，}]+)', 'i'), new RegExp(key + '\\s*[:：]\\s*([^,，}]+)', 'i')]; for (var pi = 0; pi < pats.length; pi++) { var m = text.match(pats[pi]); if (m) { var val = m[1].trim(); return opts.number ? parseNumber(val, opts.fallback) : val.replace(/^"|"$/g, ''); } } return opts.fallback !== undefined ? opts.fallback : ''; }
-function parseUtt(t) { return { id: uid('utt'), content: extractField(t, '说话内容'), start: extractField(t, '开始时间', {number:true}), end: extractField(t, '结束时间', {number:true}), speaker: normSpeaker(extractField(t, '说话人', {fallback:'speaker_0'})), gender: normGender(extractField(t, '性别', {fallback:'男'})), visible: normVisible(extractField(t, '是否人物可见', {fallback:'不确定'})) }; }
+function parseUtt(t) { return { id: uid('utt'), content: extractField(t, '说话内容'), start: extractField(t, '开始时间', {number:true}), end: extractField(t, '结束时间', {number:true}), speaker: normSpeaker(extractField(t, '说话人', {fallback:'speaker_0'})), gender: normGender(extractField(t, '性别', {fallback:'男'})), visible: normVisible(extractField(t, '是否人物可见', {fallback:'否'})) }; }
 function parseCaption(raw) { raw = String(raw || '').trim(); if (!raw) return []; var shots = []; var re = /\[镜头\s*(\d+)\]\s*\[\s*([\d.]+)s\s*-\s*([\d.]+)s\s*\]([\s\S]*?)(?=\n?\s*\[镜头\s*\d+\]\s*\[[^\]]+\]|$)/g; var m; while ((m = re.exec(raw)) !== null) { var body = m[4]; var utts = []; var ure = /\{[^{}]*\}/g; var om; while ((om = ure.exec(body)) !== null) utts.push(parseUtt(om[0])); shots.push({ id: uid('shot'), shot_no: Number(m[1]), shot_start: parseNumber(m[2], 0), shot_end: parseNumber(m[3], 0), collapsed: false, utterances: utts }); } return shots; }
 function blankShot(after) { var start = after ? Number(after.shot_end || 0) : 0; return { id: uid('shot'), shot_no: state.shots.length + 1, shot_start: start, shot_end: start, collapsed: false, utterances: [] }; }
 function blankShotBetween(prev, next) { var start = 0; if (prev && next) start = Math.round(((Number(prev.shot_end||0) + Number(next.shot_start||0)) / 2) * 100) / 100; else if (prev) start = Number(prev.shot_end || 0); else if (next) start = Math.max(0, Math.round((Number(next.shot_start||0) / 2) * 100) / 100); return { id: uid('shot'), shot_no: 0, shot_start: start, shot_end: start, collapsed: false, utterances: [] }; }

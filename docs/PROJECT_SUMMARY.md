@@ -66,7 +66,7 @@ const state = {
           end: 0.52,           // 说话结束时间（秒）
           speaker: 'speaker_0', // 说话人标识
           gender: '男',         // 性别：男/女
-          visible: '不确定'     // 是否人物可见：是/否/不确定
+          visible: '否'         // 是否人物可见：是/否
         },
         // ...
       ]
@@ -84,7 +84,7 @@ const state = {
 |------|--------|--------|------|
 | `speaker` | `speaker_0` ~ `speaker_N` | `speaker_0` | 说话人编号，按首次出现顺序自动分配 |
 | `gender` | `男` / `女` | `男` | 性别，同步规则见下文 |
-| `visible` | `是` / `否` / `不确定` | `不确定` | 是否人物可见 |
+| `visible` | `是` / `否` | `否` | 是否人物可见 |
 | `content` | 任意文本 | `''` | 说话内容文本 |
 | `start/end` | 数字（秒） | `0.00` | 时间范围 |
 
@@ -93,7 +93,7 @@ const state = {
 ```javascript
 SPEAKER_OPTIONS = ['speaker_0', 'speaker_1', ..., 'speaker_N']   // 动态扩展
 GENDER_OPTIONS  = ['男', '女']
-VISIBLE_OPTIONS = ['是', '否', '不确定']
+VISIBLE_OPTIONS = ['是', '否']
 RISK_CONFIG     = { rules: [...] }   // 风险规则配置（见第6节）
 ```
 
@@ -289,7 +289,6 @@ selectedTarget = { type: 'shot' | 'utterance', shotIndex: N, uttIndex?: N }
 ```javascript
 const RISK_CONFIG = {
   rules: [
-    { field: 'visible', forbiddenValues: ['不确定'],     level: 'block', msg: '...' },
     { field: 'gender',  forbiddenValues: ['', '不确定'],  level: 'block', msg: '...' },
     { field: 'speaker', forbiddenValues: [''],           level: 'warn',  msg: '...' },
   ]
@@ -319,7 +318,6 @@ submitAndNext(discard=false) →
 **当前拦截规则**：
 | 风险类型 | 级别 | 处理方式 |
 |----------|------|----------|
-| 人物可见 = 不确定 | 🔴 block | alert 禁止，无法绕过 |
 | 性别 = 不确定 或 空 | 🔴 block | alert 禁止，无法绕过 |
 | 说话人 = 空 | 🟡 warn | confirm 二次确认 |
 
@@ -350,7 +348,7 @@ submitAndNext(discard=false) →
 | 说话时间超出镜头范围 | warn | start < 镜头start 或 end > 镜头end |
 | 说话人格式错误 | error | 不是 speaker_N 格式 |
 | 性别不合法 | error | 不是 男/女 |
-| 人物可见不合法 | error | 不是 是/否/不确定 |
+| 人物可见不合法 | error | 不是 是/否 |
 
 ### 7.2 渲染方式
 
