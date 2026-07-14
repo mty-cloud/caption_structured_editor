@@ -56,7 +56,7 @@ body {
 .btn.icon { padding: 5px 9px; }
 input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
 .app-shell {
-  display: grid; grid-template-columns: 42% 58%; height: calc(100vh - 120px); gap: 12px; box-sizing: border-box;
+  display: grid; grid-template-columns: 1fr 2fr; height: calc(100vh - 60px); gap: 12px; box-sizing: border-box;
 }
 .left-pane, .right-pane {
   min-height: 0; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;
@@ -78,7 +78,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
 .empty-state { text-align: center; color: var(--muted); }
 .empty-title { font-size: 18px; font-weight: 700; color: #374151; margin-bottom: 6px; }
 .validation-box {
-  flex: 0 0 auto; max-height: 120px; overflow: auto; font-size: 13px; line-height: 1.55;
+  flex: 0 0 auto; max-height: 140px; overflow: auto; font-size: 13px; line-height: 1.55;
   border-top: 1px solid #e5e7eb; padding: 8px 12px; background: #f9fafb;
 }
 .validation-box.muted { color: var(--muted); }
@@ -244,30 +244,32 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
       <span class="sub" id="discardBannerSub">-</span>
       <span style="font-weight:400;font-size:13px;opacity:0.7">（点击关闭）</span>
     </div>
-    <div id="app" style="padding-top:0;">
-    <header class="app-header">
-      <div>
-        <h1>机标结构化修改器</h1>
-        <p>把机标文本拆成「镜头 → 说话单元 → 字段」模块，修改后自动生成标准文本。</p>
-      </div>
-      <div class="header-actions">
-        <button id="btnFetchTask" class="btn ghost">📥 从LS拉取</button>
-        <button id="btnSettings" class="btn ghost">⚙️</button>
-        <button id="btnDiscardSettings" class="btn ghost" style="font-size:12px;">🗑️丢弃提示</button>
-        <button id="btnLoadSample" class="btn ghost">载入示例</button>
-        <button id="btnReset" class="btn danger-ghost">清空</button>
-      </div>
-    </header>
-    <div id="taskBar" class="task-bar hidden">
-      <span>📌 任务 #<span id="taskId" class="task-id">-</span></span>
-      <span id="discardPrompt" class="discard-prompt hidden"></span>
-      <span class="task-memo">｜ 备注: <span id="memoText">-</span></span>
-      <a id="videoLink" href="#" target="_blank" class="btn small hidden">▶ 打开视频</a>
-      <span id="taskStatus" class="task-status"></span>
-    </div>
+    <div id="app" style="padding-top:0;grid-template-columns:1fr 2fr;">
     <main class="app-shell">
       <section class="left-pane">
-        <div class="pane-header">
+        <header class="app-header" style="border-radius:12px 12px 0 0;border-bottom:1px solid #e5e7eb;padding:12px 14px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;justify-content:space-between;">
+            <div>
+              <h1 style="margin:0;font-size:18px;">机标结构化修改器</h1>
+              <p style="margin:2px 0 0;font-size:12px;opacity:0.7;">机标文本 → 镜头/说话单元模块</p>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button id="btnFetchTask" class="btn" style="background:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.35);padding:5px 9px;font-size:12px;">📥 从LS拉取</button>
+              <button id="btnSettings" class="btn" style="background:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.35);padding:5px 9px;font-size:12px;">⚙️</button>
+              <button id="btnDiscardSettings" class="btn" style="background:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.35);padding:5px 9px;font-size:12px;">🗑️丢弃提示</button>
+              <button id="btnLoadSample" class="btn" style="background:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.35);padding:5px 9px;font-size:12px;">载入示例</button>
+              <button id="btnReset" class="btn" style="background:rgba(220,38,38,0.25);color:white;border-color:rgba(255,255,255,0.25);padding:5px 9px;font-size:12px;">清空</button>
+            </div>
+          </div>
+        </header>
+        <div id="taskBar" class="task-bar hidden" style="border-radius:0;margin:0;">
+          <span>📌 任务 #<span id="taskId" class="task-id">-</span></span>
+          <span id="discardPrompt" class="discard-prompt hidden"></span>
+          <span class="task-memo">｜ 备注: <span id="memoText">-</span></span>
+          <a id="videoLink" href="#" target="_blank" class="btn small hidden">▶ 打开视频</a>
+          <span id="taskStatus" class="task-status"></span>
+        </div>
+        <div class="pane-header" style="border-top:0;">
           <h2 id="leftPaneTitle">原始机标 / 导出结果</h2>
           <button id="btnPaste" class="btn small">粘贴</button>
           <button id="btnParse" class="btn primary small">解析成模块</button>
@@ -275,6 +277,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
           <button id="btnCopyOutput" class="btn primary small hidden">复制结果</button>
         </div>
         <textarea id="rawInput" class="raw-textarea" spellcheck="false" placeholder="在这里粘贴原始机标文本，例如：\n[镜头 1][0.00s-0.76s]\n{...}"></textarea>
+        <div id="validationBox" class="validation-box muted">暂无校验结果。</div>
       </section>
       <section class="right-pane">
         <div class="pane-header">
@@ -288,7 +291,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
             <div class="empty-text">粘贴机标后点击「解析成模块」。</div>
           </div>
         </div>
-        <div id="validationBox" class="validation-box muted">暂无校验结果。</div>
         <div id="submitBar" class="submit-bar hidden">
           <button id="btnDiscard" class="btn danger small">🗑 丢弃此条</button>
           <button id="btnSubmit" class="btn primary small">✅ 提交并下一个</button>
