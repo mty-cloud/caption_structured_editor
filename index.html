@@ -56,8 +56,32 @@ body {
 .btn.icon { padding: 5px 9px; }
 input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
 .app-shell {
-  display: grid; grid-template-columns: 1fr 2fr; height: calc(100vh - 60px); gap: 12px; box-sizing: border-box;
+  display: grid; grid-template-columns: 1fr 14px 2fr; height: calc(100vh - 60px); gap: 0; box-sizing: border-box;
+  transition: grid-template-columns 0.25s ease;
 }
+.app-shell.collapsed {
+  grid-template-columns: 0 14px 1fr;
+}
+.app-shell.collapsed .left-pane {
+  overflow: hidden; min-width: 0; padding: 0; border: 0;
+}
+.pane-divider {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-width: 0; cursor: pointer; user-select: none;
+  transition: background 0.15s;
+}
+.pane-divider:hover { background: #eef2ff; }
+.pane-toggle {
+  width: 22px; height: 56px; padding: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #d1d5db; border-radius: 8px;
+  background: #ffffff; color: #6b7280;
+  font-size: 11px; cursor: pointer; z-index: 5;
+  transition: all 0.15s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  line-height: 1;
+}
+.pane-toggle:hover { background: #eef2ff; color: #2563eb; border-color: #93c5fd; box-shadow: 0 2px 10px rgba(37,99,235,0.15); }
+.app-shell.collapsed .pane-toggle { color: #2563eb; border-color: #93c5fd; background: #eef2ff; }
 .left-pane, .right-pane {
   min-height: 0; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;
   display: flex; flex-direction: column; overflow: hidden;
@@ -157,7 +181,14 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
 .context-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
 .context-menu button:hover { background: #f1f5f9; }
 .danger-text { color: var(--danger); }
-@media (max-width: 1050px) { .app-shell { grid-template-columns: 1fr; height: auto; } .left-pane { min-height: 200px; } .right-pane { min-height: 400px; } }
+@media (max-width: 1050px) {
+  .app-shell { grid-template-columns: 1fr; height: auto; }
+  .left-pane { min-height: 200px; height: auto; transition: max-height 0.3s ease, min-height 0.3s ease, padding 0.25s ease, border 0.25s ease; }
+  .right-pane { min-height: 400px; }
+  .pane-divider { flex-direction: row; height: 14px; width: 100%; }
+  .pane-toggle { width: 56px; height: 22px; font-size: 10px; }
+  .app-shell.collapsed .left-pane { max-height: 0; min-height: 0 !important; overflow: hidden; padding: 0 !important; border: none !important; margin: 0 !important; }
+}
 @media (max-width: 640px) { #app { padding: 10px; } .app-header { flex-direction: column; align-items: stretch; } .shot-header { flex-direction: column; align-items: stretch; } .utt-time-group { flex-direction: column; } }
 .modal-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(15,23,42,0.45); display: grid; place-items: center; animation: fadeIn 0.15s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -268,13 +299,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
             </div>
           </div>
         </header>
-        <div id="taskBar" class="task-bar hidden" style="border-radius:0;margin:0;">
-          <span>📌 任务 #<span id="taskId" class="task-id">-</span></span>
-          <span id="discardPrompt" class="discard-prompt hidden"></span>
-          <span class="task-memo">｜ 备注: <span id="memoText">-</span></span>
-          <a id="videoLink" href="#" target="_blank" class="btn small hidden">▶ 打开视频</a>
-          <span id="taskStatus" class="task-status"></span>
-        </div>
         <div class="pane-header" style="border-top:0;">
           <h2 id="leftPaneTitle">原始机标 / 导出结果</h2>
           <button id="btnPaste" class="btn small">粘贴</button>
@@ -285,11 +309,21 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
         <textarea id="rawInput" class="raw-textarea" spellcheck="false" placeholder="在这里粘贴原始机标文本，例如：\n[镜头 1][0.00s-0.76s]\n{...}"></textarea>
         <div id="validationBox" class="validation-box muted">暂无校验结果。</div>
       </section>
+      <div class="pane-divider" id="paneDivider">
+        <button id="btnToggleLeft" class="pane-toggle" title="折叠左侧面板">◀</button>
+      </div>
       <section class="right-pane">
         <div class="pane-header">
           <h2>结构化修改</h2>
           <button id="btnAddShot" class="btn small">+ 新增镜头</button>
           <button id="btnValidate" class="btn small">校验</button>
+        </div>
+        <div id="taskBar" class="task-bar hidden" style="margin:6px 8px;">
+          <span>📌 任务 #<span id="taskId" class="task-id">-</span></span>
+          <span id="discardPrompt" class="discard-prompt hidden"></span>
+          <span class="task-memo">｜ 备注: <span id="memoText">-</span></span>
+          <a id="videoLink" href="#" target="_blank" class="btn small hidden">▶ 打开视频</a>
+          <span id="taskStatus" class="task-status"></span>
         </div>
         <div id="editor" class="editor-root">
           <div class="empty-state">
@@ -357,7 +391,9 @@ const GENDER_OPTIONS = ['男', '女'];
 const VISIBLE_OPTIONS = ['是', '否'];
 const RISK_CONFIG = {
   rules: [
-    { field: 'speaker', forbiddenValues: [''],       label: '说话人',   level: 'warn',  msg: '说话人为空，建议填写' },
+    { field: 'gender',  forbiddenValues: ['', '不确定'], label: '性别',     level: 'block', msg: '性别为「不确定」或为空，请确认后填写' },
+    { field: 'visible', forbiddenValues: ['', '不确定'], label: '人物可见', level: 'block', msg: '人物可见为「不确定」或为空，请确认' },
+    { field: 'speaker', forbiddenValues: [''],           label: '说话人',   level: 'warn',  msg: '说话人为空，建议填写' },
   ]
 };
 const MEMO_KEYWORDS = ['分屏', '渐变', '定格', '黑幕', '丢弃', '慢动作', '快进'];
@@ -722,8 +758,39 @@ document.getElementById('btnSaveDiscardSettings').addEventListener('click', func
   alert('关键词已保存');
 });
 
+// 左侧面板折叠切换
+function getToggleIcons() {
+  var isVertical = window.innerWidth <= 1050;
+  return isVertical
+    ? { open: '▲', close: '▼', openTitle: '收起左侧面板', closeTitle: '展开左侧面板' }
+    : { open: '◀', close: '▶', openTitle: '折叠左侧面板', closeTitle: '展开左侧面板' };
+}
+function updateToggleIcon(collapsed) {
+  var btn = document.getElementById('btnToggleLeft');
+  var icons = getToggleIcons();
+  btn.textContent = collapsed ? icons.close : icons.open;
+  btn.title = collapsed ? icons.closeTitle : icons.openTitle;
+}
+document.getElementById('btnToggleLeft').addEventListener('click', function(e) {
+  e.stopPropagation();
+  var shell = document.querySelector('.app-shell');
+  var collapsed = shell.classList.toggle('collapsed');
+  updateToggleIcon(collapsed);
+  localStorage.setItem('left_pane_collapsed', collapsed ? '1' : '0');
+});
+window.addEventListener('resize', function() {
+  var shell = document.querySelector('.app-shell');
+  updateToggleIcon(shell.classList.contains('collapsed'));
+});
+
 // 页面加载后检测 LS 连通性
 setTimeout(function() { checkLSConnection(); }, 100);
+// 恢复折叠状态
+if (localStorage.getItem('left_pane_collapsed') === '1') {
+  var shell = document.querySelector('.app-shell');
+  shell.classList.add('collapsed');
+  updateToggleIcon(true);
+}
 render();
   </script>
 </body>
